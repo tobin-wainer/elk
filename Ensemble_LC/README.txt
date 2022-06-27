@@ -12,3 +12,5 @@ This can be accoplished by using the following code: 'from Ensemble_LC.lightcurv
 
 For the Variabilty state pipeline:
 All of the required functions are in the variable_stats.py file. Each of these funcitons can be used seperately, or a comprehensive table can be made using the "Get_Variable_Stats_Table" function.  
+
+*THIS CODE MUST BE INITIALIZED BY SETTING A "Path_to_Save_to" AND A "Path_to_Read_in_LCs" in the variable_stats.py file*
