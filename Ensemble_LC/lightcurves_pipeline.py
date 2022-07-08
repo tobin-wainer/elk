@@ -145,7 +145,7 @@ def getUpperLimit(dataDistribution,PERCENTILE):
      
 
 UPPER_LIMIT_METHOD = 1
-PERCENTILE = 85
+PERCENTILE = 80
 cutout_size= 99 #Max for unknown reasons
 
 def downloadable(Callable, current_try_sector):   
@@ -274,7 +274,11 @@ def Get_LC(Callable, Radius, Cluster_name):
 
         #We can use our background aperture to create pixel time series and then take Principal Components of the data using Singular Value Decomposition. This gives us the "top" trends that are present in the background data.
         # I have picked 6 based on previous studies showing that is an abritrarily optimal number of components
-        pca_dm1 = lk.DesignMatrix(use_tpfs.flux.value[:, bkg_aper], name='PCA').pca(6) 
+        pca_dm1 = lk.DesignMatrix(use_tpfs.flux.value[:, bkg_aper], name='PCA').pca(6)
+        #Here we are going to set the priors for the PCA to be located around the flux values of the uncorected LC
+        pca_dm1.prior_mu =np.array([np.percentile(uncorrected_lc1.flux.value for i in range(6)])
+        pca_dm1.prior_sigma =np.array([(np.percentile(uncorrected_lc1.flux.value, 84) - np.percentile(uncorrected_lc1.flux.value, 16)) for i in range(6)])
+
 
         #The TESS mission pipeline provides cotrending basis vectors (CBVs) which capture common trends in the dataset. We can use these to detrend out pixel level data.
         #The mission provides MultiScale CBVs, which are at different time scales. In this case, we don't want to use the long scale CBVs, because this may fit out real astrophysical variability. Instead we will use the medium and short time scale CBVs.
@@ -296,8 +300,7 @@ def Get_LC(Callable, Radius, Cluster_name):
         
         # Here we create our design matrix
 
-        dm1 = lk.DesignMatrixCollection([lk.DesignMatrix(scattered_light, name='scattered_light'),
-                                         pca_dm1,
+        dm1 = lk.DesignMatrixCollection([pca_dm1,
                                          cbv_dm_use,
                                          spline_dm1,
                                          ])
@@ -315,12 +318,10 @@ def Get_LC(Callable, Radius, Cluster_name):
                 # Correct the pixel light curve by our design matrix
                 r1.correct(dm1)
                 # Extract just the systematics components
-                systematics_model[:, idx, jdx] = (r1.diagnostic_lightcurves['scattered_light'].flux.value +
+                systematics_model[:, idx, jdx] = (r1.diagnostic_lightcurves['PCA'].flux.value +
                                                   r1.diagnostic_lightcurves['CBVs'].flux.value)
                 # Add all the components
-                full_model[:, idx, jdx] =  (r1.diagnostic_lightcurves['scattered_light'].flux.value +
-
-                                            r1.diagnostic_lightcurves['PCA'].flux.value +
+                full_model[:, idx, jdx] =  (r1.diagnostic_lightcurves['PCA'].flux.value +
                                             
                                             r1.diagnostic_lightcurves['CBVs'].flux.value +
 
@@ -331,9 +332,7 @@ def Get_LC(Callable, Radius, Cluster_name):
 
 
                 #Making Normalized Model For the Test of Scattered Light
-                full_model_Normalized[:, idx, jdx] =  (r1.diagnostic_lightcurves['scattered_light'].flux.value +
-
-                                                       r1.diagnostic_lightcurves['PCA'].flux.value +
+                full_model_Normalized[:, idx, jdx] =  (r1.diagnostic_lightcurves['PCA'].flux.value +
                                                        
                                                        r1.diagnostic_lightcurves['CBVs'].flux.value +
 

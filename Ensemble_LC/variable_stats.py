@@ -191,7 +191,7 @@ def get_LSP(light_curve, Cluster_name, print_figs, save_figs):
                 spread=np.random.normal(0, light_curve['flux_err'][i])
                 new_f_val.append(light_curve['flux'][i] + spread)
 
-            omega=np.arange(0.05,11,0.01)
+            omega=np.arange(0.04,11,0.001)
             P_LS = LombScargle(t, new_f_val, dy=dy).power(omega)
 
             t=Table([omega, P_LS], names=('Frequency', 'Power'))
@@ -201,17 +201,17 @@ def get_LSP(light_curve, Cluster_name, print_figs, save_figs):
         #Here I do a Bootstrap resampling incorporating the flux error to get a confidence interval about the LSP
         def thousand_trials(light_curve):
             list_t=[trial(light_curve) for i in range(1000)]
+            
+            omega=np.arange(0.04,11,0.001)
 
-            power_array=np.zeros((len(list_t), 1095))
+            power_array=np.zeros((len(list_t), omega))
             for i in range(len(list_t)):
-                for j in range(1095):
+                for j in range(omega):
                     power_array[i][j]=list_t[i]['Power'][j]
 
             med=np.median(power_array, axis=0)
             p16=np.percentile(power_array, 16, axis=0)
             p84=np.percentile(power_array, 84, axis=0)
-
-            omega=np.arange(0.05,11,0.01)
 
             table=Table([omega, p16, med, p84], names=('Frequency', 'Power_16','Power_50', 'Power_84'))
 
@@ -272,7 +272,7 @@ def get_LSP(light_curve, Cluster_name, print_figs, save_figs):
 
         pixel_loc_write=[]
         P_LS_pixel=[]
-        omega=np.arange(0.05,11,0.01)
+        omega=np.arange(0.04,11,0.001)
 
         return fig, (np.array([round(max_LS_power,5), round(famp[0],4), freqs, pap_a, n_peaks, ratio_of_power_at_high_v_low_freq]))
 
