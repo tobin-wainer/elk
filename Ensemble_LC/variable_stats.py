@@ -204,9 +204,9 @@ def get_LSP(light_curve, Cluster_name, print_figs, save_figs):
             
             omega=np.arange(0.04,11,0.001)
 
-            power_array=np.zeros((len(list_t), omega))
+            power_array=np.zeros((len(list_t), len(omega)))
             for i in range(len(list_t)):
-                for j in range(omega):
+                for j in range(len(omega)):
                     power_array[i][j]=list_t[i]['Power'][j]
 
             med=np.median(power_array, axis=0)
