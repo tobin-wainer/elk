@@ -262,6 +262,8 @@ def Get_LC(Callable, Radius, Cluster_name):
         p = use_tpfs.plot(frame=use_tpfs.shape[0] // 2, aperture_mask=keep_mask)
         
         #Now we will begin to correct the lightcurve
+        
+        uncorrected_lc = use_tpfs.to_lightcurve(aperture_mask=keep_mask)
 
         # Time average of the pixels in the TPF:
         max_frame = use_tpfs.flux.value.max(axis=0)
@@ -276,8 +278,8 @@ def Get_LC(Callable, Radius, Cluster_name):
         # I have picked 6 based on previous studies showing that is an abritrarily optimal number of components
         pca_dm1 = lk.DesignMatrix(use_tpfs.flux.value[:, bkg_aper], name='PCA').pca(6)
         #Here we are going to set the priors for the PCA to be located around the flux values of the uncorected LC
-        pca_dm1.prior_mu =np.array([np.median(uncorrected_lc1.flux.value) for i in range(6)])
-        pca_dm1.prior_sigma =np.array([(np.percentile(uncorrected_lc1.flux.value, 84) - np.percentile(uncorrected_lc1.flux.value, 16)) for i in range(6)])
+        pca_dm1.prior_mu =np.array([np.median(uncorrected_lc.flux.value) for i in range(6)])
+        pca_dm1.prior_sigma =np.array([(np.percentile(uncorrected_lc.flux.value, 84) - np.percentile(uncorrected_lc.flux.value, 16)) for i in range(6)])
 
 
         #The TESS mission pipeline provides cotrending basis vectors (CBVs) which capture common trends in the dataset. We can use these to detrend out pixel level data.
