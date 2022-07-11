@@ -511,7 +511,7 @@ def Get_Corrected_Lightcurve(Cluster_name, Location, Radius, Cluster_Age, call_n
                            names=('Name', 'Location', 'Radius [deg]', 'Log Age', 'Has_TESS_Data', 'Used_Ob',
                                   'Obs_Available', 'Obs_DL_Failed', 'Obs_Near_Edge_S1', 'Obs_Scattered_Light'))
 
-        output_table.write(Path_to_Save_to+"Corrected_LCs/"+str(Cluster_name)+'output_table.fits', Overwrite=True)
+        output_table.write(Path_to_Save_to+"Corrected_LCs/"+str(Cluster_name)+'output_table.fits', overwrite=True)
 
         return 'No TESS DATA', output_table, 'NA'
         
