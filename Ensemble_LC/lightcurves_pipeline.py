@@ -228,22 +228,33 @@ def Get_LC(Callable, Radius, Cluster_name):
     near_edge_or_Sector_1=0
     Scattered_Light=0
 
-    #start interating through the observations until I find a good one        
+#start interating through the observations until I find a good one        
     for current_try_sector in range(sectors_available):
         print("Starting Quality Tests for Observation:", current_try_sector)
 
-        if downloadable(Callable, current_try_sector)== 'Bad':
+        #First is the Download Test
+        if (downloadable(Callable, current_try_sector)== 'Bad') & (current_try_sector+1 < sectors_available):
             print('Failed Download')
             failed_download=failed_download+1
             continue
+        if (downloadable(Callable, current_try_sector)== 'Bad') & (current_try_sector+1 < sectors_available):
+            print('Failed Download')
+            failed_download=failed_download+1
+            return ['No Good Observations'], ['Nothing'] , ['Nothing'], np.array(int(sectors_available)), np.array(int(failed_download)), np.array(int(near_edge_or_Sector_1)), np.array(int(Scattered_Light))
         else:
             use_name=[Callable]
             tpfs=tpfs=lk.search_tesscut(use_name[0])[current_try_sector].download(cutout_size=(cutout_size, cutout_size))
-            
-        if Test_near_edge(tpfs) == 'Bad':
+        
+        #Now Edge Test
+        
+        if (Test_near_edge(tpfs) == 'Bad') & (current_try_sector+1 < sectors_available):
             print('Failed Near Edge Test')
             near_edge_or_Sector_1=near_edge_or_Sector_1+1
             continue
+        if (Test_near_edge(tpfs) == 'Bad') & (current_try_sector+1 == sectors_available):
+            print('Failed Near Edge Test') 
+            near_edge_or_Sector_1=near_edge_or_Sector_1+1
+            return ['No Good Observations'], ['Nothing'] , ['Nothing'], np.array(int(sectors_available)), np.array(int(failed_download)), np.array(int(near_edge_or_Sector_1)), np.array(int(Scattered_Light))
         else: 
             use_tpfs = tpfs[np.where(tpfs.to_lightcurve().quality==0)]
 
