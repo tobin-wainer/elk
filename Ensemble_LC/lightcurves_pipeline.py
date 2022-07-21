@@ -376,7 +376,7 @@ def Get_LCs(Callable, Radius, Cluster_name):
         else:
             print(current_try_sector, "Passed Quality Tests")
             good_obs+1
-            which_sectors_good.append(i)
+            which_sectors_good.append(current_try_sector)
             #This Else Statement means that the Lightcurve is good and has passed our quality checks
             
             #Writting out the data, so I never have to Download and Correct again, but only if there is data
@@ -411,7 +411,7 @@ def Get_LCs(Callable, Radius, Cluster_name):
 
 
 
-def Generate_Lightcurves(Cluster_name, Location, Radius, Cluster_Age, call_type_Name=True, save_figs=True):
+def Generate_Lightcurves(Cluster_name, Location, Radius, Cluster_Age, call_type_Name=True):
     
     #Setting which collable we want to use
     if call_type_Name:
@@ -429,7 +429,7 @@ def Generate_Lightcurves(Cluster_name, Location, Radius, Cluster_Age, call_type_
         else: # This else statement refers to the Cluster Not Previously Being Downloaded          
               # So Calling funcion to download and correct data
             Good_observations, Obs_Available, WhichOnes_Good, Obs_failed_download, Obs_near_Edge, Obs_Scattered_Light, LC_lens = Get_LCs(Callable, Radius, Cluster_name)
-        
+            
         # Now that I have my data, if it is a light curve, I'm going to make the figure, and 
         if Good_observations[0] != 'No Good Observations':
 
@@ -442,7 +442,7 @@ def Generate_Lightcurves(Cluster_name, Location, Radius, Cluster_Age, call_type_
             OB_fd=[Obs_failed_download]
             OB_ne=[Obs_near_Edge]
             OB_sl=[Obs_Scattered_Light]
-            OB_lens=str((LC_lens))
+            OB_lens=[str((LC_lens))]
 
 
             output_table=Table([name___, [Location], [Radius], [Cluster_Age], HTD, OB_av, OB_use, OB_good, OB_fd, OB_ne, OB_sl, OB_lens],
@@ -455,7 +455,7 @@ def Generate_Lightcurves(Cluster_name, Location, Radius, Cluster_Age, call_type_
             output_table.write(Path_to_Save_to+lc_path+str(Cluster_name)+'output_table.fits')
 
             #now I'm going to read in the lightcurves and attach them to the outfpu table to have all data in one place
-            for i in range(output_table['Good_Obs'][0]):
+            for i in range(output_table['Num_Good_Obs'][0]):
                 light_curve_table=Table.read(Path_to_Save_to+lc_path+str(Cluster_name)+'.fits', hdu=i+1)
                 light_curve_table.write(Path_to_Save_to+lc_path+str(Cluster_name)+'output_table.fits', append=True)
             
@@ -464,7 +464,7 @@ def Generate_Lightcurves(Cluster_name, Location, Radius, Cluster_Age, call_type_
             
         else: #This else statement refers to there being No good Observtions
 
-            Good_observations= -99
+            Good_observations= 0
 
             name___=[Cluster_name]
             HTD=[True]
@@ -474,7 +474,7 @@ def Generate_Lightcurves(Cluster_name, Location, Radius, Cluster_Age, call_type_
             OB_fd=[Obs_failed_download]
             OB_ne=[Obs_near_Edge]
             OB_sl=[Obs_Scattered_Light]
-            OB_lens=str((LC_lens))
+            OB_lens=[str((LC_lens))]
 
 
             output_table=Table([name___, [Location], [Radius], [Cluster_Age], HTD, OB_av, OB_use, OB_good, OB_fd, OB_ne, OB_sl, OB_lens],
