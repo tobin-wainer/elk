@@ -218,7 +218,7 @@ def Test_for_Scattered_Light(use_tpfs, full_model_Normalized):
         return 'Fine'
 
 
-def Get_LCs(Callable, Radius, Cluster_name):
+def Get_LC(Callable, Radius, Cluster_name):
     # Knowing how many observations we have to work with
     search = lk.search_tesscut(Callable)
     sectors_available=len(search)
@@ -227,11 +227,8 @@ def Get_LCs(Callable, Radius, Cluster_name):
     failed_download=0
     near_edge_or_Sector_1=0
     Scattered_Light=0
-    good_obs=0
-    which_sectors_good=[]
-    LC_lens=[]
-    
-    #start interating through the observations       
+
+#start interating through the observations until I find a good one        
     for current_try_sector in range(sectors_available):
         print("Starting Quality Tests for Observation:", current_try_sector)
 
@@ -243,7 +240,7 @@ def Get_LCs(Callable, Radius, Cluster_name):
         if (downloadable(Callable, current_try_sector)== 'Bad') & (current_try_sector+1 < sectors_available):
             print('Failed Download')
             failed_download=failed_download+1
-            return ['No Good Observations'], np.array(int(sectors_available)), np.array(which_sectors_good), np.array(int(failed_download)), np.array(int(near_edge_or_Sector_1)), np.array(int(Scattered_Light)), 0
+            return ['No Good Observations'], ['Nothing'] , ['Nothing'], np.array(int(sectors_available)), np.array(int(failed_download)), np.array(int(near_edge_or_Sector_1)), np.array(int(Scattered_Light))
         else:
             use_name=[Callable]
             tpfs=tpfs=lk.search_tesscut(use_name[0])[current_try_sector].download(cutout_size=(cutout_size, cutout_size))
@@ -257,7 +254,7 @@ def Get_LCs(Callable, Radius, Cluster_name):
         if (Test_near_edge(tpfs) == 'Bad') & (current_try_sector+1 == sectors_available):
             print('Failed Near Edge Test') 
             near_edge_or_Sector_1=near_edge_or_Sector_1+1
-            return ['No Good Observations'], np.array(int(sectors_available)),  np.array(which_sectors_good), np.array(int(failed_download)), np.array(int(near_edge_or_Sector_1)), np.array(int(Scattered_Light)), 0
+            return ['No Good Observations'], ['Nothing'] , ['Nothing'], np.array(int(sectors_available)), np.array(int(failed_download)), np.array(int(near_edge_or_Sector_1)), np.array(int(Scattered_Light))
         else: 
             use_tpfs = tpfs[np.where(tpfs.to_lightcurve().quality==0)]
 
@@ -290,10 +287,11 @@ def Get_LCs(Callable, Radius, Cluster_name):
 
         #We can use our background aperture to create pixel time series and then take Principal Components of the data using Singular Value Decomposition. This gives us the "top" trends that are present in the background data.
         # I have picked 6 based on previous studies showing that is an abritrarily optimal number of components
-        pca_dm1 = lk.DesignMatrix(use_tpfs.flux.value[:, bkg_aper], name='PCA').pca(6) 
+        pca_dm1 = lk.DesignMatrix(use_tpfs.flux.value[:, bkg_aper], name='PCA').pca(6)
         #Here we are going to set the priors for the PCA to be located around the flux values of the uncorected LC
         pca_dm1.prior_mu =np.array([np.median(uncorrected_lc.flux.value) for i in range(6)])
         pca_dm1.prior_sigma =np.array([(np.percentile(uncorrected_lc.flux.value, 84) - np.percentile(uncorrected_lc.flux.value, 16)) for i in range(6)])
+
 
         #The TESS mission pipeline provides cotrending basis vectors (CBVs) which capture common trends in the dataset. We can use these to detrend out pixel level data.
         #The mission provides MultiScale CBVs, which are at different time scales. In this case, we don't want to use the long scale CBVs, because this may fit out real astrophysical variability. Instead we will use the medium and short time scale CBVs.
@@ -363,6 +361,10 @@ def Get_LCs(Callable, Radius, Cluster_name):
                                                 full_corrected_lightcurve.flux.value,
                                                 full_corrected_lightcurve.flux_err.value], 
                                                 names=('time', 'flux', 'flux_err'))
+        systematics_model_corrected_lightcurve_table=Table([systematics_model_corrected_lightcurve.time.value, 
+                                                systematics_model_corrected_lightcurve.flux.value,
+                                                systematics_model_corrected_lightcurve.flux_err.value], 
+                                                names=('time', 'flux', 'flux_err'))
 
 
         if (Test_for_Scattered_Light(use_tpfs, full_model_Normalized) == 'Bad') & (current_try_sector+1 < sectors_available):
@@ -372,49 +374,18 @@ def Get_LCs(Callable, Radius, Cluster_name):
         if (Test_for_Scattered_Light(use_tpfs, full_model_Normalized) == 'Bad') & (current_try_sector+1 == sectors_available):
             print("Failed Scattered Light Test")
             Scattered_Light=Scattered_Light+1
-            return ['No Good Observations'], np.array(int(sectors_available)), np.array(which_sectors_good), np.array(int(failed_download)), np.array(int(near_edge_or_Sector_1)), np.array(int(Scattered_Light)), 0
+            return ['No Good Observations'], ['Nothing'] , ['Nothing'], np.array(int(sectors_available)), np.array(int(failed_download)), np.array(int(near_edge_or_Sector_1)), np.array(int(Scattered_Light))
         else:
             print(current_try_sector, "Passed Quality Tests")
-            good_obs+1
-            which_sectors_good.append(i)
             #This Else Statement means that the Lightcurve is good and has passed our quality checks
-            
-            #Writting out the data, so I never have to Download and Correct again, but only if there is data
-            full_corrected_lightcurve_table.add_column(Column(flux_to_mag(full_corrected_lightcurve_table['flux'])), name='mag')
-            full_corrected_lightcurve_table.add_column(Column(flux_err_to_mag_err(full_corrected_lightcurve_table['flux'], full_corrected_lightcurve_table['flux_err'])), name='mag_err')
-            
-            lc_path="Corrected_LCs/"        
-            full_corrected_lightcurve_table.write(Path_to_Save_to+lc_path+str(Cluster_name)+'.fits', format='fits', append=True)
-            
-            #Now I am going to save a plot of the light curve to go visually inspect later
-            range_=max(full_corrected_lightcurve_table['flux'])-min(full_corrected_lightcurve_table['flux'])
-            fig=plt.figure()
-            plt.title('Observation:'+str(current_try_sector))
-            plt.plot(full_corrected_lightcurve_table['time'], full_corrected_lightcurve_table['flux'], color='k', linewidth=.5)
-            plt.xlabel('Delta Time [Days]')
-            plt.ylabel('Flux [e/s]')
-            plt.text(full_corrected_lightcurve_table['time'][0], (max(full_corrected_lightcurve_table['flux'])-(range_*0.05)), str(Cluster_name), fontsize=14)
-            plt.subplots_adjust(right=1.4, top=1)
-
-            path="Figures/LCs/" #Sub-folder 
-            which_fig="_Full_Corrected_LC_"
-            sector="Observation_"+str(current_try_sector)
-            out=".png"
-
-            plt.savefig(Path_to_Save_to+path+str(Cluster_name)+which_fig+sector+out, format='png') 
-            plt.close(fig) 
-
-            LC_lens.append(len(full_corrected_lightcurve_table))
-    
-    return np.array(int(sectors_available)), np.array(int(good_obs)), np.array(which_sectors_good), np.array(int(failed_download)), np.array(int(near_edge_or_Sector_1)), np.array(int(Scattered_Light)), np.array(LC_lens)
+            break
+    return full_corrected_lightcurve_table, systematics_model_corrected_lightcurve_table, np.array(int(current_try_sector+1)), np.array(int(sectors_available)), np.array(int(failed_download)), np.array(int(near_edge_or_Sector_1)), np.array(int(Scattered_Light))
 
 
-
-
-def Generate_Lightcurves(Cluster_name, Location, Radius, Cluster_Age, call_type_Name=True, save_figs=True):
+def Get_Corrected_Lightcurve(Cluster_name, Location, Radius, Cluster_Age, call_name_type_Name=True, save_figs=True, print_figs=True):
     
     #Setting which collable we want to use
-    if call_type_Name:
+    if call_name_type_Name:
         Callable= Cluster_name
     else:
         Callable= Location
@@ -422,112 +393,137 @@ def Generate_Lightcurves(Cluster_name, Location, Radius, Cluster_Age, call_type_
     if tess_data(Callable) == True:
         #Test to see if I have already downloaded and corrected this cluster, If I have, read in the data
         if previously_downloaded(Cluster_name) == True:
-            output_table= Table.read(Path_to_Save_to+'Corrected_LCs/'+str(Cluster_name)+'output_table.fits', hdu=1)
+            output_table= Table.read(Path_to_Save_to+'Corrected_LCs/'+str(Cluster_name)+'output_table.fits')
+            if output_table['Used_Ob'][0] != -99: # -99 in the Used Observation Column means there were no good observations
+                data= Table.read(Path_to_Save_to+'Corrected_LCs/'+str(Cluster_name)+'.fits')
+                systematic_model_data= Table.read(Path_to_Save_to+'Corrected_LCs/'+str(Cluster_name)+'ONLY_SYSMOD.fits')
+                
+                #Quickly remaking the Light curve plot as an output
+                range_=max(data['flux'])-min(data['flux'])
+                fig=plt.figure()
+                plt.plot(data['time'], data['flux'], color='k', linewidth=.5)
+                plt.xlabel('Delta Time [Days]')
+                plt.ylabel('Flux [e/s]')
+                plt.text(data['time'][0], max(data['flux']), str(Cluster_name), fontsize=16)
+                plt.text(data['time'][0], (max(data['flux'])-(range_*.1)),
+                         (str("Age:")+str('{0:.2g}').format(Cluster_Age)), fontsize=16)
 
-            return output_table
+                if print_figs:
+                    plt.show()
+                plt.close(fig)
+                
+                return data, output_table, fig
+                      
+            else: #When I downloaded it before, there were no good Observations
+                data=['No Good Observations'] 
+                
+                return data, output_table, 'NA'
+                              
         
         else: # This else statement refers to the Cluster Not Previously Being Downloaded          
               # So Calling funcion to download and correct data
-            Good_observations, Obs_Available, WhichOnes_Good, Obs_failed_download, Obs_near_Edge, Obs_Scattered_Light, LC_lens = Get_LCs(Callable, Radius, Cluster_name)
+            data, systematic_model_data, used_observation, Obs_Available, Obs_failed_download, Obs_near_Edge, Obs_Scattered_Light = Get_LC(Callable, Radius, Cluster_name)
         
         # Now that I have my data, if it is a light curve, I'm going to make the figure, and 
-        if Good_observations[0] != 'No Good Observations':
+        if data[0] != 'No Good Observations':
+            data.add_column(Column(flux_to_mag(data['flux'])), name='mag')
+            data.add_column(Column(flux_err_to_mag_err(data['flux'], data['flux_err'])), name='mag_err')
 
             #Making the Output Table
             name___=[Cluster_name]
             HTD=[True]
-            OB_use=[Good_observations]
+            OB_use=[used_observation]
             OB_av=[Obs_Available]
-            OB_good=[str(WhichOnes_Good)]
             OB_fd=[Obs_failed_download]
             OB_ne=[Obs_near_Edge]
             OB_sl=[Obs_Scattered_Light]
-            OB_lens=str((LC_lens))
 
 
-            output_table=Table([name___, [Location], [Radius], [Cluster_Age], HTD, OB_av, OB_use, OB_good, OB_fd, OB_ne, OB_sl, OB_lens],
-                               names=('Name', 'Location', 'Radius [deg]', 'Log Age', 'Has_TESS_Data', 'Obs_Available',
-                                      'Num_Good_Obs', 'Which_Obs_Good', 'Obs_DL_Failed', 'Obs_Near_Edge_S1', 'Obs_Scattered_Light', 'Light_Curve_Lengths'))
+            output_table=Table([name___, [Location], [Radius], [Cluster_Age], HTD, OB_use, OB_av, OB_fd, OB_ne, OB_sl],
+                               names=('Name', 'Location', 'Radius [deg]', 'Log Age', 'Has_TESS_Data', 'Used_Ob',
+                                      'Obs_Available', 'Obs_DL_Failed', 'Obs_Near_Edge_S1', 'Obs_Scattered_Light'))
 
             #Writting out the data, so I never have to Download and Correct again, but only if there is data
             lc_path="Corrected_LCs/"        
-
+            data.write(Path_to_Save_to+lc_path+str(Cluster_name)+'.fits')
+            systematic_model_data.write(Path_to_Save_to+lc_path+str(Cluster_name)+'ONLY_SYSMOD.fits')
             output_table.write(Path_to_Save_to+lc_path+str(Cluster_name)+'output_table.fits')
 
-            #now I'm going to read in the lightcurves and attach them to the outfpu table to have all data in one place
-            for i in range(output_table['Good_Obs'][0]):
-                light_curve_table=Table.read(Path_to_Save_to+lc_path+str(Cluster_name)+'.fits', hdu=i+1)
-                light_curve_table.write(Path_to_Save_to+lc_path+str(Cluster_name)+'output_table.fits', append=True)
+            #Now I am going to save a plot of the light curve to go visually inspect later
+            range_=max(data['flux'])-min(data['flux'])
+            fig=plt.figure()
+            plt.plot(data['time'], data['flux'], color='k', linewidth=.5)
+            plt.xlabel('Delta Time [Days]')
+            plt.ylabel('Flux [e/s]')
+            plt.text(data['time'][0], max(data['flux']), str(Cluster_name), fontsize=16)
+            plt.text(data['time'][0], (max(data['flux'])-(range_*.1)),
+                     (str("Age:")+str('{0:.2g}').format(Cluster_Age)), fontsize=16)
+
+            path="Figures/LCs/" #Sub-folder 
+            which_fig="Full_Corrected_LC"
+            out=".png"
+
+            if save_figs:
+                plt.savefig(Path_to_Save_to+path+str(Cluster_name)+which_fig+out, format='png') 
+            if print_figs:
+                plt.show()
+            plt.close(fig) 
+
+            range_=max(systematic_model_data['flux'])-min(systematic_model_data['flux'])
+            fig2=plt.figure()
+            plt.plot(systematic_model_data['time'], systematic_model_data['flux'], color='k', linewidth=.5)
+            plt.xlabel('Delta Time [Days]')
+            plt.ylabel('Flux [e/s]')
+            plt.text(systematic_model_data['time'][0], max(systematic_model_data['flux']), str(Cluster_name), fontsize=16)
+            plt.text(systematic_model_data['time'][0], (max(systematic_model_data['flux'])-(range_*.1)),
+                     (str("Age:")+str('{0:.2g}').format(Cluster_Age)), fontsize=16)
+
+            which_fig2="Only_Systematic_Model_Corrected_LC"
+
+            if save_figs:
+                plt.savefig(Path_to_Save_to+path+str(Cluster_name)+which_fig2+out, format='png') 
+            plt.close(fig2) 
             
-            return output_table
+            return data, output_table, fig
                 
             
         else: #This else statement refers to there being No good Observtions
 
-            Good_observations= -99
+            used_observation= -99
 
+            #Making the Output Table
             name___=[Cluster_name]
             HTD=[True]
-            OB_use=[Good_observations]
+            OB_use=[used_observation]
             OB_av=[Obs_Available]
-            OB_good=[str(WhichOnes_Good)]
             OB_fd=[Obs_failed_download]
             OB_ne=[Obs_near_Edge]
             OB_sl=[Obs_Scattered_Light]
-            OB_lens=str((LC_lens))
 
 
-            output_table=Table([name___, [Location], [Radius], [Cluster_Age], HTD, OB_av, OB_use, OB_good, OB_fd, OB_ne, OB_sl, OB_lens],
-                               names=('Name', 'Location', 'Radius [deg]', 'Log Age', 'Has_TESS_Data', 'Obs_Available',
-                                      'Num_Good_Obs', 'Which_Obs_Good', 'Obs_DL_Failed', 'Obs_Near_Edge_S1', 'Obs_Scattered_Light', 'Light_Curve_Lengths'))
+            output_table=Table([name___, [Location], [Radius], [Cluster_Age], HTD, OB_use, OB_av, OB_fd, OB_ne, OB_sl],
+                               names=('Name', 'Location', 'Radius [deg]', 'Log Age', 'Has_TESS_Data', 'Used_Ob',
+                                      'Obs_Available', 'Obs_DL_Failed', 'Obs_Near_Edge_S1', 'Obs_Scattered_Light'))
             
             output_table.write(Path_to_Save_to+"Corrected_LCs/"+str(Cluster_name)+'output_table.fits')
             
-            return output_table 
+            return data, output_table, 'NA'
           
     else: #This Means that there is no TESS coverage for the Cluster (Easiest to check)
         name___= [Cluster_name]       
         HTD=[False]  
         OB_use= np.ma.array([0], mask=[1])
-        OB_good= np.ma.array([0], mask=[1])
         OB_av= np.ma.array([0], mask=[1])
         OB_fd= np.ma.array([0], mask=[1])
         OB_ne= np.ma.array([0], mask=[1])
-        OB_sl= np.ma.array([0], mask=[1])  
-        OB_lens= np.ma.array([0], mask=[1])
+        OB_sl= np.ma.array([0], mask=[1])        
 
-        output_table=Table([name___, [Location], [Radius], [Cluster_Age], HTD, OB_av, OB_use, [str(OB_good)], OB_fd, OB_ne, OB_sl, [str(OB_lens)]],
-                           names=('Name', 'Location', 'Radius [deg]', 'Log Age', 'Has_TESS_Data', 'Obs_Available',
-                                  'Num_Good_Obs', 'Which_Obs_Good', 'Obs_DL_Failed', 'Obs_Near_Edge_S1', 'Obs_Scattered_Light', 'Light_Curve_Lengths'))
+        output_table=Table([name___, [Location], [Radius], [Cluster_Age], HTD, OB_use, OB_av, OB_fd, OB_ne, OB_sl],
+                           names=('Name', 'Location', 'Radius [deg]', 'Log Age', 'Has_TESS_Data', 'Used_Ob',
+                                  'Obs_Available', 'Obs_DL_Failed', 'Obs_Near_Edge_S1', 'Obs_Scattered_Light'))
 
         output_table.write(Path_to_Save_to+"Corrected_LCs/"+str(Cluster_name)+'output_table.fits', overwrite=True)
 
-        return output_table 
+        return 'No TESS DATA', output_table, 'NA'
         
-        
-def Access_Lightcurve(Cluster_name, desired_observation):
-    try:
-        output_table= Table.read(Path_to_Save_to+'Corrected_LCs/'+str(Cluster_name)+'output_table.fits', hdu=1)
-    except:
-        raise Exception("The Lightcurve has not been downloaded and corrected. Please run 'Generate_Lightcurves()' function for this cluster.")
-
-    #Get the Light Curve
-    light_curve_table= Table.read(Path_to_Save_to+'Corrected_LCs/'+str(Cluster_name)+'output_table.fits', hdu=desired_observation)
-    
-    sector_number=output_table['Which_Obs_Good'][desired_observation]
-    #Retrive the figure
-    path="Figures/LCs/" #Sub-folder 
-    which_fig="_Full_Corrected_LC_"
-    sector="Observation_"+str(sector_number)
-    out=".png"
-    
-    img = plt.imread(Path_to_Save_to+path+str(Cluster_name)+which_fig+sector+out)
-    fig = plt.figure()
-    plt.imshow(img)
-    plt.xticks([])
-    plt.yticks([])
-    plt.close()
-    
-    return fig, light_curve_table
-    
         
