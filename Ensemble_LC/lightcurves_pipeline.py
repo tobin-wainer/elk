@@ -243,7 +243,7 @@ def Get_LCs(Callable, Radius, Cluster_name):
         if (downloadable(Callable, current_try_sector)== 'Bad') & (current_try_sector+1 < sectors_available):
             print('Failed Download')
             failed_download=failed_download+1
-            return ['No Good Observations'], np.array(int(sectors_available)), np.array(which_sectors_good), np.array(int(failed_download)), np.array(int(near_edge_or_Sector_1)), np.array(int(Scattered_Light)), 0
+            return np.array(int(good_obs)), np.array(int(sectors_available)), np.array(which_sectors_good), np.array(int(failed_download)), np.array(int(near_edge_or_Sector_1)), np.array(int(Scattered_Light)), np.array(LC_lens)
         else:
             use_name=[Callable]
             tpfs=tpfs=lk.search_tesscut(use_name[0])[current_try_sector].download(cutout_size=(cutout_size, cutout_size))
@@ -257,7 +257,7 @@ def Get_LCs(Callable, Radius, Cluster_name):
         if (Test_near_edge(tpfs) == 'Bad') & (current_try_sector+1 == sectors_available):
             print('Failed Near Edge Test') 
             near_edge_or_Sector_1=near_edge_or_Sector_1+1
-            return ['No Good Observations'], np.array(int(sectors_available)),  np.array(which_sectors_good), np.array(int(failed_download)), np.array(int(near_edge_or_Sector_1)), np.array(int(Scattered_Light)), 0
+            return np.array(int(good_obs)), np.array(int(sectors_available)),  np.array(which_sectors_good), np.array(int(failed_download)), np.array(int(near_edge_or_Sector_1)), np.array(int(Scattered_Light)), np.array(LC_lens)
         else: 
             use_tpfs = tpfs[np.where(tpfs.to_lightcurve().quality==0)]
 
@@ -365,17 +365,18 @@ def Get_LCs(Callable, Radius, Cluster_name):
                                                 names=('time', 'flux', 'flux_err'))
 
 
-        if (Test_for_Scattered_Light(use_tpfs, full_model_Normalized) == 'Bad') & (current_try_sector+1 < sectors_available):
+        if (Test_for_Scattered_Light(use_tpfs, full_model_Normalized) == 'Bad'):
             print("Failed Scattered Light Test")
             Scattered_Light=Scattered_Light+1
             continue
-        if (Test_for_Scattered_Light(use_tpfs, full_model_Normalized) == 'Bad') & (current_try_sector+1 == sectors_available):
+        if (Test_for_Scattered_Light(use_tpfs, full_model_Normalized) == 'Bad') & (current_try_sector+1 < sectors_available):
             print("Failed Scattered Light Test")
             Scattered_Light=Scattered_Light+1
-            return ['No Good Observations'], np.array(int(sectors_available)), np.array(which_sectors_good), np.array(int(failed_download)), np.array(int(near_edge_or_Sector_1)), np.array(int(Scattered_Light)), 0
+            return np.array(int(good_obs)), np.array(int(sectors_available)), np.array(which_sectors_good), np.array(int(failed_download)), np.array(int(near_edge_or_Sector_1)), np.array(int(Scattered_Light)), np.array(LC_lens)
+        
         else:
             print(current_try_sector, "Passed Quality Tests")
-            good_obs+1
+            good_obs=good_obs+1
             which_sectors_good.append(current_try_sector)
             #This Else Statement means that the Lightcurve is good and has passed our quality checks
             
@@ -406,7 +407,9 @@ def Get_LCs(Callable, Radius, Cluster_name):
 
             LC_lens.append(len(full_corrected_lightcurve_table))
     
-    return np.array(int(sectors_available)), np.array(int(good_obs)), np.array(which_sectors_good), np.array(int(failed_download)), np.array(int(near_edge_or_Sector_1)), np.array(int(Scattered_Light)), np.array(LC_lens)
+    return np.array(int(good_obs)), np.array(int(sectors_available)), np.array(which_sectors_good), np.array(int(failed_download)), np.array(int(near_edge_or_Sector_1)), np.array(int(Scattered_Light)), np.array(LC_lens)
+
+
 
 
 
@@ -429,9 +432,9 @@ def Generate_Lightcurves(Cluster_name, Location, Radius, Cluster_Age, call_type_
         else: # This else statement refers to the Cluster Not Previously Being Downloaded          
               # So Calling funcion to download and correct data
             Good_observations, Obs_Available, WhichOnes_Good, Obs_failed_download, Obs_near_Edge, Obs_Scattered_Light, LC_lens = Get_LCs(Callable, Radius, Cluster_name)
-            
+            print(Good_observations)
         # Now that I have my data, if it is a light curve, I'm going to make the figure, and 
-        if Good_observations[0] != 'No Good Observations':
+        if Good_observations != 0:
 
             #Making the Output Table
             name___=[Cluster_name]
@@ -464,7 +467,6 @@ def Generate_Lightcurves(Cluster_name, Location, Radius, Cluster_Age, call_type_
             
         else: #This else statement refers to there being No good Observtions
 
-            Good_observations= 0
 
             name___=[Cluster_name]
             HTD=[True]
@@ -505,6 +507,8 @@ def Generate_Lightcurves(Cluster_name, Location, Radius, Cluster_Age, call_type_
         return output_table 
         
         
+        
+        
 def Access_Lightcurve(Cluster_name, desired_observation):
     try:
         output_table= Table.read(Path_to_Save_to+'Corrected_LCs/'+str(Cluster_name)+'output_table.fits', hdu=1)
@@ -513,12 +517,11 @@ def Access_Lightcurve(Cluster_name, desired_observation):
 
     #Get the Light Curve
     light_curve_table= Table.read(Path_to_Save_to+'Corrected_LCs/'+str(Cluster_name)+'output_table.fits', hdu=desired_observation)
-    
-    sector_number=output_table['Which_Obs_Good'][desired_observation]
+
     #Retrive the figure
     path="Figures/LCs/" #Sub-folder 
     which_fig="_Full_Corrected_LC_"
-    sector="Observation_"+str(sector_number)
+    sector="Observation_"+str(desired_observation)
     out=".png"
     
     img = plt.imread(Path_to_Save_to+path+str(Cluster_name)+which_fig+sector+out)
