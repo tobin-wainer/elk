@@ -53,10 +53,8 @@ from mpl_toolkits.mplot3d import Axes3D
 from tqdm import tqdm
 import os
 import gc
-import multiprocessing
 
-
-Path_to_Save_to= '/Users/Tobin/Dropbox/TESS_project/Variability_Statistics/Test_Pipeline_Module/'
+Path_to_Save_to= '/uufs/chpc.utah.edu/common/home/astro/zasowski/wainer/Variability_Pipeline/MW/'
 
 def previously_downloaded(Cluster_name):   
     sub_path= 'Corrected_LCs/' #A sub-folder in my Path
@@ -509,27 +507,31 @@ def Generate_Lightcurves(Cluster_name, Location, Radius, Cluster_Age, call_type_
         
         
         
-def Access_Lightcurve(Cluster_name, desired_observation):
+def Access_Lightcurve(Cluster_name, sector):
     try:
         output_table= Table.read(Path_to_Save_to+'Corrected_LCs/'+str(Cluster_name)+'output_table.fits', hdu=1)
     except:
         raise Exception("The Lightcurve has not been downloaded and corrected. Please run 'Generate_Lightcurves()' function for this cluster.")
 
     #Get the Light Curve
-    light_curve_table= Table.read(Path_to_Save_to+'Corrected_LCs/'+str(Cluster_name)+'output_table.fits', hdu=desired_observation)
+    if output_table['Num_Good_Obs'] ==1:       
+        light_curve_table=Table.read(Path_to_Save_to + 'Corrected_LCs/' + str(Cluster_name) + 'output_table.fits', hdu=2)
+   
+    else:       
+        light_curve_table=Table.read(Path_to_Save_to + 'Corrected_LCs/' + str(Cluster_name) + 'output_table.fits', hdu=(int(sector)+2))
 
-    #Retrive the figure
-    path="Figures/LCs/" #Sub-folder 
-    which_fig="_Full_Corrected_LC_"
-    sector="Observation_"+str(desired_observation)
-    out=".png"
-    
-    img = plt.imread(Path_to_Save_to+path+str(Cluster_name)+which_fig+sector+out)
-    fig = plt.figure()
-    plt.imshow(img)
-    plt.xticks([])
-    plt.yticks([])
-    plt.close()
+    #Now I am going to save a plot of the light curve to go visually inspect later
+    range_=max(light_curve_table['flux'])-min(light_curve_table['flux'])
+    fig=plt.figure()
+    plt.title('Observation:'+str(sector))
+    plt.plot(light_curve_table['time'], light_curve_table['flux'], color='k', linewidth=.5)
+    plt.xlabel('Delta Time [Days]')
+    plt.ylabel('Flux [e/s]')
+    plt.text(light_curve_table['time'][0], (max(light_curve_table['flux'])-(range_*0.05)), str(Cluster_name), fontsize=14)
+    plt.subplots_adjust(right=1.4, top=1)
+
+    plt.show()
+    plt.close(fig) 
     
     return fig, light_curve_table
     
