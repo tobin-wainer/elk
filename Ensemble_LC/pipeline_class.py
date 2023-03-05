@@ -50,23 +50,24 @@ class ClusterPipeline:
         print(f'{self.callable} has {len(search)} observations')
         return len(search) > 0
 
-    def downloadable(self, ind):   
+    def downloadable(self, ind):
         # Using a Try statement to see if we can download the cluster data If we cannot
         try:
-            tpfs = lk.search_tesscut(self.callable)[ind].download(cutout_size=(self.cutout_size,
-                                                                               self.cutout_size))
+            self.tpfs = lk.search_tesscut(self.callable)[ind].download(cutout_size=(self.cutout_size,
+                                                                                    self.cutout_size))
         except:
             print("No Download")
-            tpfs = None
-        return tpfs
+            self.tpfs = None
 
-    def near_edge(tpfs):
+    def near_edge(self):
         # Only selecting time steps that are good, or have quality == 0
-        t1 = tpfs[np.where(tpfs.to_lightcurve().quality == 0)]
+        t1 = self.tpfs[np.where(self.tpfs.to_lightcurve().quality == 0)]
+
+        min_not_nan = ~np.isnan(np.min(t1[0].flux.value))
         # Also making sure the Sector isn't the one with the Systematic
-        return ~((np.isnan(np.min(t1[0].flux.value)) is False)
-                 & (tpfs.sector != 1)
-                 & (np.min(t1[0].flux.value) > 1))
+        not_sector_one = self.tpfs.sector != 1
+        min_flux_greater_one = np.min(t1[0].flux.value) > 1
+        return ~(min_not_nan & not_sector_one & min_flux_greater_one)
 
     def get_upper_limit(self, dataDistribution):
         # TODO: Several of these methods don't work
@@ -197,7 +198,7 @@ class ClusterPipeline:
             print(f"Starting Quality Tests for Observation: {current_try_sector}")
 
             # First is the Download Test
-            self.tpfs = self.downloadable(current_try_sector)
+            self.downloadable(current_try_sector)
             if (self.tpfs is None) & (current_try_sector + 1 < sectors_available):
                 print('Failed Download')
                 failed_download += 1
