@@ -14,6 +14,32 @@ class ClusterPipeline:
     def __init__(self, radius, cluster_age, output_path="./", cluster_name=None, location=None,
                  upper_limit_method=1, percentile=80, cutout_size=99, scattered_light_frequency=5,
                  debug=False):
+        """Class for generating lightcurves from TESS cutouts of a specific cluster
+
+        Parameters
+        ----------
+        radius : `float`
+            Radius of the cluster in #TODO What units?
+        cluster_age : `float`
+            Age of the cluster in #TODO What units?
+        output_path : `str`, optional
+            Path to a folder in which to save outputs - must have subfolders Corrected_LCs/ and Figures/LCs/,
+            by default "./"
+        cluster_name : `str`, optional
+            Name of the cluster, by default None
+        location : `str`, optional
+            Location of the cluster #TODO What format here?, by default None
+        upper_limit_method : `int`, optional
+            Which upper limit method to use #TODO more details, by default 1
+        percentile : `int`, optional
+            Which percentile to use in the upper limit calculation, by default 80
+        cutout_size : `int`, optional
+            How large to make the cutout, by default 99
+        scattered_light_frequency : `int`, optional
+            Frequency at which to check for scattered light, by default 5
+        debug : `bool`, optional
+            #TODO DELETE THIS, by default False
+        """
 
         assert cluster_name is not None or location is not None,\
             "Must provide at least one of `cluster_name` and `location`"
