@@ -116,6 +116,50 @@ class ClusterPipeline:
         sky_mask = bkg_mask == 1
         return star_mask, sky_mask
 
+    def scattered_light(self, use_tpfs, full_model_Normalized):
+        # regular grid covering the domain of the data
+        X, Y = np.meshgrid(np.arange(0, self.cutout_size, 1), np.arange(0, self.cutout_size, 1))
+        XX = X.flatten()
+        YY = Y.flatten()
+
+        # Define the steps for which we test for scattered light
+        # Set the search to be for every 5th time step, can be changed based of the believed frequency of the scattered light
+        # TODO: Make this changeable
+        time_steps = np.arange(0, len(use_tpfs), 5)
+        coefficients_array = np.zeros((len(time_steps), 3))
+        data_flux_values = (use_tpfs - full_model_Normalized).flux.value
+
+        for i in range(len(time_steps)):
+            data = data_flux_values[time_steps[i]]
+            # best-fit linear plane
+            A = np.c_[XX, YY, np.ones(XX.shape)]
+            C, _, _, _ = scipy.linalg.lstsq(A, data.flatten())    # coefficients
+            coefficients_array[i] = C
+
+            # Deleting defined items we don't need any more to save memory
+            del A
+            del C
+            del data
+
+        X_cos = coefficients_array[:, 0]
+        Y_cos = coefficients_array[:, 1]
+        Z_cos = coefficients_array[:, 2]
+
+        mxc = max(abs(X_cos))
+        myc = max(abs(Y_cos))
+        mzc = max(abs(Z_cos))
+
+        #Deleting defined items we don't need any more to save memory
+        del X_cos
+        del Y_cos
+        del Z_cos
+        del coefficients_array
+        gc.collect() #This is a command which will delete stray arguments to save memory
+
+        print(mzc, mxc, myc)
+
+        return (mzc > 2.5) | ((mxc > 0.02) & (myc > 0.02))
+
     def get_lcs(self):
         """Get lightcurves for each of the observations of the cluster
 
@@ -283,16 +327,18 @@ class ClusterPipeline:
             systematics_model_corrected_lightcurve=(use_tpfs - systematics_model).to_lightcurve(aperture_mask=keep_mask)
             full_corrected_lightcurve = (use_tpfs - full_model).to_lightcurve(aperture_mask=keep_mask)
 
-            full_corrected_lightcurve_table = Table([full_corrected_lightcurve.time.value, 
+            full_corrected_lightcurve_table = Table([full_corrected_lightcurve.time.value,
                                                      full_corrected_lightcurve.flux.value,
-                                                     full_corrected_lightcurve.flux_err.value], 
-                                                     names=('time', 'flux', 'flux_err'))
+                                                     full_corrected_lightcurve.flux_err.value],
+                                                    names=('time', 'flux', 'flux_err'))
 
-            if (Test_for_Scattered_Light(use_tpfs, full_model_Normalized) == 'Bad'):
+            scattered_light_test = self.scattered_light(use_tpfs, full_model_Normalized)
+            # TODO: Conditions might be off here?
+            if scattered_light_test:
                 print("Failed Scattered Light Test")
                 Scattered_Light += 1
                 continue
-            if (Test_for_Scattered_Light(use_tpfs, full_model_Normalized) == 'Bad') & (current_try_sector + 1 < sectors_available):
+            if scattered_light_test & (current_try_sector + 1 < sectors_available):
                 print("Failed Scattered Light Test")
                 Scattered_Light += 1
                 return np.array(int(good_obs)), np.array(int(sectors_available)), np.array(which_sectors_good), np.array(int(failed_download)), np.array(int(near_edge_or_Sector_1)), np.array(int(Scattered_Light)), np.array(LC_lens)
@@ -301,18 +347,18 @@ class ClusterPipeline:
                 good_obs += 1
                 which_sectors_good.append(current_try_sector)
                 # This Else Statement means that the Lightcurve is good and has passed our quality checks
-                
+
                 # Writing out the data, so I never have to Download and Correct again, but only if there is data
                 full_corrected_lightcurve_table.add_column(Column(flux_to_mag(full_corrected_lightcurve_table['flux'])), name='mag')
                 full_corrected_lightcurve_table.add_column(Column(flux_err_to_mag_err(full_corrected_lightcurve_table['flux'], full_corrected_lightcurve_table['flux_err'])), name='mag_err')
-                
+
                 full_corrected_lightcurve_table.write(os.path.join(self.output_path,
                                                                    "Corrected_LCs",
                                                                    self.callable + ".fits"),
                                                       format='fits', append=True)
-                
+
                 # Now I am going to save a plot of the light curve to go visually inspect later
-                range_= max(full_corrected_lightcurve_table['flux']) - min(full_corrected_lightcurve_table['flux'])
+                range_ = max(full_corrected_lightcurve_table['flux']) - min(full_corrected_lightcurve_table['flux'])
                 fig = plt.figure()
                 plt.title(f'Observation: {current_try_sector}')
                 plt.plot(full_corrected_lightcurve_table['time'], full_corrected_lightcurve_table['flux'],
@@ -330,7 +376,7 @@ class ClusterPipeline:
                 plt.close(fig) 
 
                 LC_lens.append(len(full_corrected_lightcurve_table))
-        
+
         return np.array(int(good_obs)), np.array(int(sectors_available)),\
             np.array(which_sectors_good), np.array(int(failed_download)),\
                 np.array(int(near_edge_or_Sector_1)), np.array(int(Scattered_Light)), np.array(LC_lens)
@@ -423,6 +469,36 @@ class ClusterPipeline:
 
             return output_table
 
+    def access_lightcurve(self, sector):
+        path = os.path.join(self.output_path, 'Corrected_LCs', self.callable + 'output_table.fits')
+        if not os.path.exists(path):
+            print("The Lightcurve has not been downloaded and corrected. Please run 'Generate_Lightcurves()' function for this cluster.")
+            return None, None
+            
+        output_table= Table.read(path, hdu=1)
+
+        # Get the Light Curve
+        if output_table['Num_Good_Obs'] == 1:
+            light_curve_table=Table.read(path, hdu=2)
+        else:
+            light_curve_table=Table.read(path, hdu=(int(sector)+2))
+
+        # Now I am going to save a plot of the light curve to go visually inspect later
+        range_= max(light_curve_table['flux']) - min(light_curve_table['flux'])
+        fig = plt.figure()
+        plt.title(f'Observation: {sector}')
+        plt.plot(light_curve_table['time'], light_curve_table['flux'], color='k', linewidth=.5)
+        plt.xlabel('Delta Time [Days]')
+        plt.ylabel('Flux [e/s]')
+        plt.text(light_curve_table['time'][0], (max(light_curve_table['flux'])-(range_*0.05)),
+                 self.cluster_name, fontsize=14)
+        plt.subplots_adjust(right=1.4, top=1)
+
+        plt.show()
+        plt.close(fig)
+
+        return fig, light_curve_table
+
 def degs_to_pixels(degs):
     return degs*60*60/21 #convert degrees to arcsecs and then divide by the resolution of TESS (21 arcsec per pixel)
 
@@ -441,81 +517,3 @@ def flux_err_to_mag_err(flux, flux_err):
     m_err_squared=(abs(d_mag_d_flux)**2)*(flux_err**2)
 
     return np.sqrt(m_err_squared)
-
-
-def Test_for_Scattered_Light(use_tpfs, full_model_Normalized):
-    # regular grid covering the domain of the data
-    X,Y = np.meshgrid(np.arange(0, cutout_size, 1), np.arange(0, cutout_size, 1))
-    XX = X.flatten()
-    YY = Y.flatten()
-
-    #Define the steps for which we test for scattered light 
-    time_steps=np.arange(0,len(use_tpfs), 5) #Set the search to be for every 5th time step, can be changed based of the believed frequency of the scattered light
-
-    coefficients_array=np.zeros((len(time_steps), 3))
-
-    data_flux_values=(use_tpfs-full_model_Normalized).flux.value
-
-    for i in range(len(time_steps)):
-        data=data_flux_values[time_steps[i]]
-        # best-fit linear plane
-        A = np.c_[XX, YY, np.ones(XX.shape)]
-        C,_,_,_ = scipy.linalg.lstsq(A, data.flatten())    # coefficients
-        coefficients_array[i]=C
-
-        #Deleting defined items we don't need any more to save memory
-        del A
-        del C
-        del data
-
-    X_cos= coefficients_array[:,0]
-    Y_cos= coefficients_array[:,1]
-    Z_cos= coefficients_array[:,2]
-
-    mxc=max(abs(X_cos))
-    myc=max(abs(Y_cos))
-    mzc=max(abs(Z_cos))
-
-    #Deleting defined items we don't need any more to save memory
-    del X_cos
-    del Y_cos
-    del Z_cos
-    del coefficients_array
-    gc.collect() #This is a command which will delete stray arguments to save memory
-    
-    print(mzc, mxc, myc)
-
-    if (mzc > 2.5) | ((mxc > 0.02) & (myc > 0.02)): 
-        return 'Bad'
-    else:
-        return 'Fine'
-        
-def Access_Lightcurve(Cluster_name, sector):
-    try:
-        output_table= Table.read(Path_to_Save_to+'Corrected_LCs/'+str(Cluster_name)+'output_table.fits', hdu=1)
-    except:
-        raise Exception("The Lightcurve has not been downloaded and corrected. Please run 'Generate_Lightcurves()' function for this cluster.")
-
-    #Get the Light Curve
-    if output_table['Num_Good_Obs'] ==1:       
-        light_curve_table=Table.read(Path_to_Save_to + 'Corrected_LCs/' + str(Cluster_name) + 'output_table.fits', hdu=2)
-   
-    else:       
-        light_curve_table=Table.read(Path_to_Save_to + 'Corrected_LCs/' + str(Cluster_name) + 'output_table.fits', hdu=(int(sector)+2))
-
-    #Now I am going to save a plot of the light curve to go visually inspect later
-    range_=max(light_curve_table['flux'])-min(light_curve_table['flux'])
-    fig=plt.figure()
-    plt.title('Observation:'+str(sector))
-    plt.plot(light_curve_table['time'], light_curve_table['flux'], color='k', linewidth=.5)
-    plt.xlabel('Delta Time [Days]')
-    plt.ylabel('Flux [e/s]')
-    plt.text(light_curve_table['time'][0], (max(light_curve_table['flux'])-(range_*0.05)), str(Cluster_name), fontsize=14)
-    plt.subplots_adjust(right=1.4, top=1)
-
-    plt.show()
-    plt.close(fig) 
-    
-    return fig, light_curve_table
-    
-        
