@@ -8,4 +8,5 @@ c = ClusterPipeline(output_path="../output",
                     cutout_size=10,
                     debug=True)
 
-c.generate_lightcurves()
+# c.generate_lightcurves()
+c.access_lightcurve(1)

@@ -511,7 +511,6 @@ class ClusterPipeline:
         plt.ylabel('Flux [e/s]')
         plt.text(light_curve_table['time'][0], (max(light_curve_table['flux'])-(range_*0.05)),
                  self.cluster_name, fontsize=14)
-        plt.subplots_adjust(right=1.4, top=1)
 
         plt.show()
         plt.close(fig)
