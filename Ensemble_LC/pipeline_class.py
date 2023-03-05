@@ -12,7 +12,7 @@ import gc
 
 class ClusterPipeline:
     def __init__(self, radius, cluster_age, output_path="./", cluster_name=None, location=None,
-                 upper_limit_method=1, percentile=80, cutout_size=99, scattered_light_frequency=5,
+                 percentile=80, cutout_size=99, scattered_light_frequency=5,
                  principle_components=6,
                  debug=False):
         """Class for generating lightcurves from TESS cutouts of a specific cluster
@@ -30,8 +30,6 @@ class ClusterPipeline:
             Name of the cluster, by default None
         location : `str`, optional
             Location of the cluster #TODO What format here?, by default None
-        upper_limit_method : `int`, optional
-            Which upper limit method to use #TODO more details, by default 1
         percentile : `int`, optional
             Which percentile to use in the upper limit calculation, by default 80
         cutout_size : `int`, optional
@@ -53,7 +51,6 @@ class ClusterPipeline:
         self.callable = cluster_name if cluster_name is not None else location
         self.cluster_name = cluster_name
         self.location = location
-        self.upper_limit_method = upper_limit_method
         self.percentile = percentile
         self.cutout_size = cutout_size
         self.scattered_light_frequency = scattered_light_frequency
@@ -106,25 +103,6 @@ class ClusterPipeline:
         min_flux_greater_one = np.min(t1[0].flux.value) > 1
         return ~(min_not_nan & not_sector_one & min_flux_greater_one)
 
-    def get_upper_limit(self, dataDistribution):
-        # TODO: Several of these methods don't work
-        if self.upper_limit_method == 1:
-            return np.nanpercentile(dataDistribution, self.percentile)
-
-        elif self.upper_limit_method == 2:
-            hist = np.histogram(dataDistribution, bins=BINS, range=(0, 3000))  # Bin the data
-            return hist[1][np.argmax(hist[0])]  # Return the flux corresponding to the most populated bin
-
-        elif self.upper_limit_method == 3:
-            pass
-
-        elif self.upper_limit_method == 4:
-            numMaxima = countMaxima(tpfs[i][frame].flux.reshape((self.cutout_size, self.cutout_size)))
-            numPixels = np.count_nonzero(~np.isnan(tpfs[i][frame].flux))
-            return np.nanpercentile(dataDistribution, 100 - numMaxima / numPixels * 100)
-        else:
-            return 150
-
     def circle_aperture(self, data, bkg):
         radius_in_pixels = degs_to_pixels(self.radius)
         data_mask = np.zeros_like(data)
@@ -134,10 +112,10 @@ class ClusterPipeline:
         cen_x = x_len//2
         cen_y = y_len//2
         bkg_mask = np.zeros_like(bkg)
-        bkg_cutoff = self.get_upper_limit(bkg)
+        bkg_cutoff = np.nanpercentile(bkg, self.percentile)
         for i in range(x_len):
             for j in range(y_len):
-                if (i-cen_x)**2 + (j-cen_y)**2 < (radius_in_pixels)**2:   # star mask condition
+                if (i - cen_x)**2 + (j - cen_y)**2 < (radius_in_pixels)**2:   # star mask condition
                     data_mask[0, i, j] = 1
 
         # TODO: not a fan of variable overwrites
@@ -410,7 +388,6 @@ class ClusterPipeline:
                 plt.text(full_corrected_lightcurve_table['time'][0],
                          (max(full_corrected_lightcurve_table['flux'])-(range_*0.05)),
                          self.callable, fontsize=14)
-                plt.subplots_adjust(right=1.4, top=1)
 
                 path = os.path.join(self.output_path, "Figures", "LCs",
                                     f'{self.callable}_Full_Corrected_LC_Observation_{current_try_sector}.png')
