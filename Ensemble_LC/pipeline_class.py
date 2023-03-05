@@ -42,8 +42,34 @@ class ClusterPipeline:
             #TODO DELETE THIS, by default False
         """
 
+        # make sure that some sort of identifier has been provided
         assert cluster_name is not None or location is not None,\
             "Must provide at least one of `cluster_name` and `location`"
+
+        # check main output folder
+        if not os.path.exists(output_path):
+            print(f"WARNING: There is no output folder at the path that you supplied ({output_path})")
+            create_it = input(("  Would you like me to create it for you? "
+                               "(If not then no files will be saved) [Y/n]"))
+            if create_it == "" or create_it.lower() == "y":
+                # create the folder
+                os.mkdir(output_path)
+            else:
+                output_path = None
+
+        # check subfolders
+        self.save = {"lcs": False, "figures": False}
+        if output_path is not None:
+            for subpath, key in zip(["Corrected_LCs", os.path.join("Figures", "LCs")], ["lcs", "figures"]):
+                path = os.path.join(output_path, subpath)
+                if not os.path.exists(path):
+                    print(f"WARNING: The necessary subfolder at ({path}) does not exist")
+                    create_it = input(("  Would you like me to create it for you? "
+                                       "(If not then these files will not be saved) [Y/n]"))
+                    if create_it == "" or create_it.lower() == "y":
+                        # create the folder
+                        os.makedirs(path)
+                        self.save[key] = True
 
         self.output_path = output_path
         self.radius = radius
@@ -89,6 +115,7 @@ class ClusterPipeline:
         try:
             self.tpfs = lk.search_tesscut(self.callable)[ind].download(cutout_size=(self.cutout_size,
                                                                                     self.cutout_size))
+        # TODO: Bare Excepts are bad, should be more specific here
         except:
             print("No Download")
             self.tpfs = None
@@ -371,10 +398,11 @@ class ClusterPipeline:
                 full_corrected_lightcurve_table.add_column(Column(flux_to_mag(full_corrected_lightcurve_table['flux'])), name='mag')
                 full_corrected_lightcurve_table.add_column(Column(flux_err_to_mag_err(full_corrected_lightcurve_table['flux'], full_corrected_lightcurve_table['flux_err'])), name='mag_err')
 
-                full_corrected_lightcurve_table.write(os.path.join(self.output_path,
-                                                                   "Corrected_LCs",
-                                                                   self.callable + ".fits"),
-                                                      format='fits', append=True)
+                if self.output_path is not None and self.save["lcs"]:
+                    full_corrected_lightcurve_table.write(os.path.join(self.output_path,
+                                                                    "Corrected_LCs",
+                                                                    self.callable + ".fits"),
+                                                        format='fits', append=True)
 
                 # Now I am going to save a plot of the light curve to go visually inspect later
                 range_ = max(full_corrected_lightcurve_table['flux']) - min(full_corrected_lightcurve_table['flux'])
@@ -388,8 +416,9 @@ class ClusterPipeline:
                          (max(full_corrected_lightcurve_table['flux'])-(range_*0.05)),
                          self.callable, fontsize=14)
 
-                path = os.path.join(self.output_path, "Figures", "LCs",
-                                    f'{self.callable}_Full_Corrected_LC_Observation_{current_try_sector}.png')
+                if self.output_path is not None and self.save["figures"]:
+                    path = os.path.join(self.output_path, "Figures", "LCs",
+                                        f'{self.callable}_Full_Corrected_LC_Observation_{current_try_sector}.png')
                 plt.savefig(path, format='png')
                 plt.close(fig)
 
@@ -435,9 +464,10 @@ class ClusterPipeline:
                                             'Light_Curve_Lengths'))
 
                 # Writing out the data, so I never have to Download and Correct again
-                output_table.write(LC_PATH)
+                if self.output_path is not None and self.save["lcs"]:
+                    output_table.write(LC_PATH)
 
-                if self.n_good_obs != 0:
+                if self.n_good_obs != 0 and self.output_path is not None and self.save["lcs"]:
                     # now I'm going to read in the lightcurves and attach them to the output table to have all data in one place
                     for i in range(output_table['Num_Good_Obs'][0]):
                         light_curve_table = Table.read(LC_PATH.replace("output_table", ""), hdu=i + 1)
@@ -462,7 +492,9 @@ class ClusterPipeline:
                                 names=('Name', 'Location', 'Radius [deg]', 'Log Age', 'Has_TESS_Data',
                                         'Obs_Available', 'Num_Good_Obs', 'Which_Obs_Good', 'Obs_DL_Failed',
                                         'Obs_Near_Edge_S1', 'Obs_Scattered_Light', 'Light_Curve_Lengths'))
-            output_table.write(LC_PATH, overwrite=True)
+
+            if self.output_path is not None and self.save["lcs"]:
+                output_table.write(LC_PATH, overwrite=True)
             return output_table
 
     def access_lightcurve(self, sector):
