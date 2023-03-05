@@ -23,56 +23,57 @@ class ClusterPipeline:
 
     def previously_downloaded(self):
         SUB_FOLDER = 'Corrected_LCs/'
-        path = os.path.join(self.output_path, SUB_FOLDER, str(self.callable), 'output_table.fits')
+        path = os.path.join(self.output_path, SUB_FOLDER, str(self.callable) + 'output_table.fits')
         return os.path.exists(path)
 
     def generate_lightcurves(self):
+        LC_PATH = os.path.join(self.output_path, 'Corrected_LCs/',
+                               str(self.callable) + 'output_table.fits')
         if tess_data(self.callable):
-            #Test to see if I have already downloaded and corrected this cluster, If I have, read in the data
+            # Test to see if I have already downloaded and corrected this cluster, If I have, read in the data
             if self.previously_downloaded():
-                output_table = Table.read(os.path.join(self.output_path,
-                                                       'Corrected_LCs/',
-                                                       str(self.callable),
-                                                       'output_table.fits'),
-                                          hdu=1)
+                output_table = Table.read(LC_PATH, hdu=1)
                 return output_table
-            
-            else: # This else statement refers to the Cluster Not Previously Being Downloaded          
+
+            else:
+                # This else statement refers to the Cluster Not Previously Being Downloaded
                 # So Calling funcion to download and correct data
-                Good_observations, Obs_Available, WhichOnes_Good, Obs_failed_download, Obs_near_Edge, Obs_Scattered_Light, LC_lens = Get_LCs(Callable, Radius, Cluster_name)
-                print(Good_observations)
-            # Now that I have my data, if it is a light curve, I'm going to make the figure, and 
-            if Good_observations != 0:
+                self.get_lcs()
+                print(self.good_observations)
+            # Now that I have my data, if it is a light curve, I'm going to make the figure, and
+            if self.good_observations != 0:
 
                 #Making the Output Table
                 name___=[Cluster_name]
                 HTD=[True]
-                OB_use=[Good_observations]
-                OB_av=[Obs_Available]
-                OB_good=[str(WhichOnes_Good)]
-                OB_fd=[Obs_failed_download]
-                OB_ne=[Obs_near_Edge]
-                OB_sl=[Obs_Scattered_Light]
-                OB_lens=[str((LC_lens))]
+                OB_use=[self.good_observations]
+                OB_av=[self.obs_available]
+                OB_good=[str(self.which_ones_good)]
+                OB_fd=[self.obs_failed_download]
+                OB_ne=[self.obs_near_Edge]
+                OB_sl=[self.obs_Scattered_Light]
+                OB_lens=[str((self.lc_lens))]
 
-                output_table=Table([name___, [Location], [Radius], [Cluster_Age], HTD, OB_av, OB_use, OB_good, OB_fd, OB_ne, OB_sl, OB_lens],
-                                names=('Name', 'Location', 'Radius [deg]', 'Log Age', 'Has_TESS_Data', 'Obs_Available',
-                                        'Num_Good_Obs', 'Which_Obs_Good', 'Obs_DL_Failed', 'Obs_Near_Edge_S1', 'Obs_Scattered_Light', 'Light_Curve_Lengths'))
+                output_table = Table([name___, [self.location], [self.radius], [self.cluster_age], HTD, OB_av,
+                                      OB_use, OB_good, OB_fd, OB_ne, OB_sl, OB_lens],
+                                     names=('Name', 'Location', 'Radius [deg]', 'Log Age', 'Has_TESS_Data',
+                                            'Obs_Available', 'Num_Good_Obs', 'Which_Obs_Good',
+                                            'Obs_DL_Failed', 'Obs_Near_Edge_S1', 'Obs_Scattered_Light',
+                                            'Light_Curve_Lengths'))
 
-                #Writting out the data, so I never have to Download and Correct again, but only if there is data
-                lc_path="Corrected_LCs/"        
+                # Writing out the data, so I never have to Download and Correct again
+                output_table.write(LC_PATH)
 
-                output_table.write(Path_to_Save_to+lc_path+str(Cluster_name)+'output_table.fits')
-
-                #now I'm going to read in the lightcurves and attach them to the outfpu table to have all data in one place
+                # now I'm going to read in the lightcurves and attach them to the output table to have all data in one place
                 for i in range(output_table['Num_Good_Obs'][0]):
-                    light_curve_table=Table.read(Path_to_Save_to+lc_path+str(Cluster_name)+'.fits', hdu=i+1)
-                    light_curve_table.write(Path_to_Save_to+lc_path+str(Cluster_name)+'output_table.fits', append=True)
+                    light_curve_table = Table.read(LC_PATH.replace("output_table", ""), hdu=i + 1)
+                    light_curve_table.write(LC_PATH, append=True)
                 
                 return output_table
                     
                 
-            else: #This else statement refers to there being No good Observtions
+            else:
+                # This else statement refers to there being No good Observations
 
 
                 name___=[Cluster_name]
@@ -90,7 +91,7 @@ class ClusterPipeline:
                                 names=('Name', 'Location', 'Radius [deg]', 'Log Age', 'Has_TESS_Data', 'Obs_Available',
                                         'Num_Good_Obs', 'Which_Obs_Good', 'Obs_DL_Failed', 'Obs_Near_Edge_S1', 'Obs_Scattered_Light', 'Light_Curve_Lengths'))
                 
-                output_table.write(Path_to_Save_to+"Corrected_LCs/"+str(Cluster_name)+'output_table.fits')
+                output_table.write(LC_PATH)
                 
                 return output_table 
             
@@ -109,10 +110,9 @@ class ClusterPipeline:
                             names=('Name', 'Location', 'Radius [deg]', 'Log Age', 'Has_TESS_Data', 'Obs_Available',
                                     'Num_Good_Obs', 'Which_Obs_Good', 'Obs_DL_Failed', 'Obs_Near_Edge_S1', 'Obs_Scattered_Light', 'Light_Curve_Lengths'))
 
-            output_table.write(Path_to_Save_to+"Corrected_LCs/"+str(Cluster_name)+'output_table.fits', overwrite=True)
+            output_table.write(LC_PATH, overwrite=True)
 
-            return output_table 
-
+            return output_table
 
 
 def tess_data(Callable):
