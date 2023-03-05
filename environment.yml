@@ -1,0 +1,19 @@
+name: cluster-pipeline
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python
+  - numpy
+  - pip
+  - matplotlib
+  - astropy
+  - scipy
+  - jupyter
+  - jupyterlab
+  - ipython
+  - pandas
+  - tqdm
+  - pip:
+    - lightkurve
+    - tables
