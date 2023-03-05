@@ -60,6 +60,14 @@ class ClusterPipeline:
             tpfs = None
         return tpfs
 
+    def near_edge(tpfs):
+        # Only selecting time steps that are good, or have quality == 0
+        t1 = tpfs[np.where(tpfs.to_lightcurve().quality == 0)]
+        # Also making sure the Sector isn't the one with the Systematic
+        return ~((np.isnan(np.min(t1[0].flux.value)) is False)
+                 & (tpfs.sector != 1)
+                 & (np.min(t1[0].flux.value) > 1))
+
     def get_lcs(self):
         """Get lightcurves for each of the observations of the cluster
 
@@ -97,35 +105,35 @@ class ClusterPipeline:
             print(f"Starting Quality Tests for Observation: {current_try_sector}")
 
             # First is the Download Test
-            tpfs = self.downloadable(current_try_sector)
-            if (tpfs is None) & (current_try_sector + 1 < sectors_available):
+            self.tpfs = self.downloadable(current_try_sector)
+            if (self.tpfs is None) & (current_try_sector + 1 < sectors_available):
                 print('Failed Download')
                 failed_download += 1
                 continue
-            elif (tpfs is None) & (current_try_sector + 1 == sectors_available):
+            elif (self.tpfs is None) & (current_try_sector + 1 == sectors_available):
                 print('Failed Download')
                 failed_download += 1
                 return np.array(int(good_obs)), np.array(int(sectors_available)), np.array(which_sectors_good), np.array(int(failed_download)), np.array(int(near_edge_or_Sector_1)), np.array(int(Scattered_Light)), np.array(LC_lens)
 
-            #Now Edge Test
-            
-            if (Test_near_edge(tpfs) == 'Bad') & (current_try_sector + 1 < sectors_available):
+            # Now Edge Test
+            near_edge = self.near_edge()
+            if near_edge & (current_try_sector + 1 < sectors_available):
                 print('Failed Near Edge Test')
                 near_edge_or_Sector_1 += 1
                 continue
-            if (Test_near_edge(tpfs) == 'Bad') & (current_try_sector + 1 == sectors_available):
-                print('Failed Near Edge Test') 
+            if near_edge & (current_try_sector + 1 == sectors_available):
+                print('Failed Near Edge Test')
                 near_edge_or_Sector_1 += 1
                 return np.array(int(good_obs)), np.array(int(sectors_available)),  np.array(which_sectors_good), np.array(int(failed_download)), np.array(int(near_edge_or_Sector_1)), np.array(int(Scattered_Light)), np.array(LC_lens)
-            else: 
-                use_tpfs = tpfs[np.where(tpfs.to_lightcurve().quality == 0)]
+            else:
+                use_tpfs = self.tpfs[np.where(self.tpfs.to_lightcurve().quality == 0)]
 
             # Getting Rid of where the flux err < 0
             use_tpfs = use_tpfs[use_tpfs.to_lightcurve().flux_err > 0]
 
             # Define the aperture for our Cluster based on previous Vijith functions
-            star_mask1 = np.empty([len(use_tpfs), cutout_size, cutout_size], dtype='bool')
-            sky_mask1 = np.empty([len(use_tpfs), cutout_size, cutout_size], dtype='bool')
+            star_mask1 = np.empty([len(use_tpfs), self.cutout_size, self.cutout_size], dtype='bool')
+            sky_mask1 = np.empty([len(use_tpfs), self.cutout_size, self.cutout_size], dtype='bool')
 
             star_mask1[0], sky_mask1[0] = circle_aperture(use_tpfs[0].flux.value, use_tpfs[0].flux.value, self.radius, self.percentile)
 
@@ -415,35 +423,6 @@ def circle_aperture(data,bkg,radius,PERCENTILE):
 #     sky_mask_2 = bkg_mask_2==1
 #     field_mask = field==1
     return star_mask,sky_mask# return masks
-    
-def getUpperLimit(dataDistribution,PERCENTILE):
-    if UPPER_LIMIT_METHOD == 1:
-        return np.nanpercentile(dataDistribution, PERCENTILE)
-
-    elif UPPER_LIMIT_METHOD == 2:
-        hist = np.histogram(dataDistribution, bins=BINS, range=(0, 3000))# Bin the data
-        return hist[1][np.argmax(hist[0])]# Return the flux corresponding to the most populated bin
-
-    elif UPPER_LIMIT_METHOD == 3:
-        pass
-
-    elif UPPER_LIMIT_METHOD == 4:
-        numMaxima = countMaxima(tpfs[i][frame].flux.reshape((cutout_size, cutout_size)))
-        numPixels = np.count_nonzero(~np.isnan(tpfs[i][frame].flux))
-        return np.nanpercentile(dataDistribution, 100 - numMaxima / numPixels * 100)
-
-    else:
-        return 150
-
-
-def Test_near_edge(tpfs): 
-
-    t1= tpfs[np.where(tpfs.to_lightcurve().quality==0)] #Only selecting time steps that are good, or have quality =0 
-    #Also making sure the Sector isn't the one with the Systematic
-    if (np.isnan(np.min(t1[0].flux.value)) == False) & (tpfs.sector != 1) & (np.min(t1[0].flux.value) > 1):
-        return 'fine'
-    else: 
-        return 'Bad'
 
 
 def Test_for_Scattered_Light(use_tpfs, full_model_Normalized):
