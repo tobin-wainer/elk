@@ -278,22 +278,21 @@ class ClusterPipeline:
                                              - np.percentile(uncorrected_lc.flux.value, 16))
                                             for _ in range(self.principle_components)])
 
-            #The TESS mission pipeline provides co-trending basis vectors (CBVs) which capture common trends
+            # The TESS mission pipeline provides co-trending basis vectors (CBVs) which capture common trends
             # in the dataset. We can use these to de-trend out pixel level data. The mission provides
             # MultiScale CBVs, which are at different time scales. In this case, we don't want to use the long
             # scale CBVs, because this may fit out real astrophysical variability. Instead we will use the
             # medium and short time scale CBVs.
-            # TODO: this function seems to be deprecated
-            cbvs_1 = lk.correctors.cbvcorrector.download_tess_cbvs(sector=use_tpfs.sector,
-                                                                   camera=use_tpfs.camera,
-                                                                   ccd=use_tpfs.ccd,
-                                                                   cbv_type='MultiScale',
-                                                                   band=2).interpolate(use_tpfs.to_lightcurve())
-            cbvs_2 = lk.correctors.cbvcorrector.download_tess_cbvs(sector=use_tpfs.sector,
-                                                                   camera=use_tpfs.camera,
-                                                                   ccd=use_tpfs.ccd,
-                                                                   cbv_type='MultiScale',
-                                                                   band=3).interpolate(use_tpfs.to_lightcurve())
+            cbvs_1 = lk.correctors.cbvcorrector.load_tess_cbvs(sector=use_tpfs.sector,
+                                                               camera=use_tpfs.camera,
+                                                               ccd=use_tpfs.ccd,
+                                                               cbv_type='MultiScale',
+                                                               band=2).interpolate(use_tpfs.to_lightcurve())
+            cbvs_2 = lk.correctors.cbvcorrector.load_tess_cbvs(sector=use_tpfs.sector,
+                                                               camera=use_tpfs.camera,
+                                                               ccd=use_tpfs.ccd,
+                                                               cbv_type='MultiScale',
+                                                               band=3).interpolate(use_tpfs.to_lightcurve())
 
             cbv_dm1 = cbvs_1.to_designmatrix(cbv_indices=np.arange(1, 8))
             cbv_dm2 = cbvs_2.to_designmatrix(cbv_indices=np.arange(1, 8))
