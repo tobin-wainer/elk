@@ -12,10 +12,11 @@ import gc
 
 class ClusterPipeline:
     def __init__(self, radius, cluster_age, output_path="./", cluster_name=None, location=None,
-                 upper_limit_method=1, percentile=80, cutout_size=99, debug=False):
+                 upper_limit_method=1, percentile=80, cutout_size=99, scattered_light_frequency=5,
+                 debug=False):
 
         assert cluster_name is not None or location is not None,\
-            "Must provide EITHER a cluster name or location"
+            "Must provide at least one of `cluster_name` and `location`"
 
         self.output_path = output_path
         self.radius = radius
@@ -26,6 +27,7 @@ class ClusterPipeline:
         self.upper_limit_method = upper_limit_method
         self.percentile = percentile
         self.cutout_size = cutout_size
+        self.scattered_light_frequency = scattered_light_frequency
         self.debug = debug
 
     def previously_downloaded(self):
@@ -128,9 +130,7 @@ class ClusterPipeline:
         YY = Y.flatten()
 
         # Define the steps for which we test for scattered light
-        # Set the search to be for every 5th time step, can be changed based of the believed frequency of the scattered light
-        # TODO: Make this changeable
-        time_steps = np.arange(0, len(use_tpfs), 5)
+        time_steps = np.arange(0, len(use_tpfs), self.scattered_light_frequency)
         coefficients_array = np.zeros((len(time_steps), 3))
         data_flux_values = (use_tpfs - full_model_Normalized).flux.value
 
@@ -386,6 +386,13 @@ class ClusterPipeline:
                 self.lc_lens.append(len(full_corrected_lightcurve_table))
 
     def generate_lightcurves(self):
+        """Generate lightcurve files for the cluster and save them in `self.output_path`
+
+        Returns
+        -------
+        output_table : :class:`~astropy.table.Table`
+            The full lightcurves output table that was saved
+        """
         LC_PATH = os.path.join(self.output_path, 'Corrected_LCs/',
                                str(self.callable) + 'output_table.fits')
         if self.has_tess_data():
@@ -396,7 +403,7 @@ class ClusterPipeline:
 
             else:
                 # This else statement refers to the Cluster Not Previously Being Downloaded
-                # So Calling funcion to download and correct data
+                # So Calling function to download and correct data
                 self.get_lcs()
 
                 # Making the Output Table
@@ -479,23 +486,23 @@ class ClusterPipeline:
 
 
 def degs_to_pixels(degs):
-    return degs*60*60/21 #convert degrees to arcsecs and then divide by the resolution of TESS (21 arcsec per pixel)
+    # convert degrees to arcsecs and then divide by the resolution of TESS (21 arcsec per pixel)
+    return degs*60*60/21
 
 
 def pixels_to_degs(pixels):
-    return pixels*21/(60*60) #convert degrees to arcsecs and then divide by the resolution of TESS (21 arcsec per pixel)
+    # convert degrees to arcsecs and then divide by the resolution of TESS (21 arcsec per pixel)
+    return pixels*21/(60*60)
 
 
 def flux_to_mag(flux):
-    m1=10    
-    f1=15000    
-    mag=2.5*(np.log10(f1/flux)) + m1    
+    m1 = 10
+    f1 = 15000
+    mag = 2.5 * np.log10(f1 / flux) + m1
     return mag
 
 
 def flux_err_to_mag_err(flux, flux_err):
-    d_mag_d_flux= -2.5/(flux*np.log(10))
-
-    m_err_squared=(abs(d_mag_d_flux)**2)*(flux_err**2)
-
+    d_mag_d_flux = -2.5 / (flux * np.log(10))
+    m_err_squared = abs(d_mag_d_flux)**2 * flux_err**2
     return np.sqrt(m_err_squared)
