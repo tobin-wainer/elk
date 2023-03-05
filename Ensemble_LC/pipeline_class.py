@@ -68,6 +68,54 @@ class ClusterPipeline:
                  & (tpfs.sector != 1)
                  & (np.min(t1[0].flux.value) > 1))
 
+    def get_upper_limit(self, dataDistribution):
+        # TODO: Several of these methods don't work
+        if self.upper_limit_method == 1:
+            return np.nanpercentile(dataDistribution, self.percentile)
+
+        elif self.upper_limit_method == 2:
+            hist = np.histogram(dataDistribution, bins=BINS, range=(0, 3000))  # Bin the data
+            return hist[1][np.argmax(hist[0])]  # Return the flux corresponding to the most populated bin
+
+        elif self.upper_limit_method == 3:
+            pass
+
+        elif self.upper_limit_method == 4:
+            numMaxima = countMaxima(tpfs[i][frame].flux.reshape((self.cutout_size, self.cutout_size)))
+            numPixels = np.count_nonzero(~np.isnan(tpfs[i][frame].flux))
+            return np.nanpercentile(dataDistribution, 100 - numMaxima / numPixels * 100)
+        else:
+            return 150
+
+    def circle_aperture(self, data, bkg):
+        radius_in_pixels = degs_to_pixels(self.radius)
+        data_mask = np.zeros_like(data)
+        x_len = np.shape(data_mask)[1]
+        y_len = np.shape(data_mask)[2]
+        # centers
+        cen_x = x_len//2
+        cen_y = y_len//2
+        bkg_mask = np.zeros_like(bkg)
+        bkg_cutoff = self.get_upper_limit(bkg)
+        for i in range(x_len):
+            for j in range(y_len):
+                if (i-cen_x)**2 + (j-cen_y)**2 < (radius_in_pixels)**2:   # star mask condition
+                    data_mask[0, i, j] = 1
+
+        # TODO: not a fan of variable overwrites
+        x_len = np.shape(bkg_mask)[1]
+        y_len = np.shape(bkg_mask)[2]
+        cen_x = x_len//2
+        cen_y = y_len//2
+        for i in range(x_len):
+            for j in range(y_len):
+                if np.logical_and((i - cen_x)**2+(j - cen_y)**2 > (radius_in_pixels)**2, bkg[0, i, j] < bkg_cutoff):  # sky mask condition
+                    bkg_mask[0, i, j] = 1
+
+        star_mask = data_mask == 1
+        sky_mask = bkg_mask == 1
+        return star_mask, sky_mask
+
     def get_lcs(self):
         """Get lightcurves for each of the observations of the cluster
 
@@ -135,7 +183,7 @@ class ClusterPipeline:
             star_mask1 = np.empty([len(use_tpfs), self.cutout_size, self.cutout_size], dtype='bool')
             sky_mask1 = np.empty([len(use_tpfs), self.cutout_size, self.cutout_size], dtype='bool')
 
-            star_mask1[0], sky_mask1[0] = circle_aperture(use_tpfs[0].flux.value, use_tpfs[0].flux.value, self.radius, self.percentile)
+            star_mask1[0], sky_mask1[0] = self.circle_aperture(use_tpfs[0].flux.value, use_tpfs[0].flux.value)
 
             keep_mask = star_mask1[0]
 
@@ -160,7 +208,8 @@ class ClusterPipeline:
             # is an arbitrarily optimal number of components
             pca_dm1 = lk.DesignMatrix(use_tpfs.flux.value[:, bkg_aper], name='PCA').pca(6)
 
-            # Here we are going to set the priors for the PCA to be located around the flux values of the uncorected LC
+            # Here we are going to set the priors for the PCA to be located around the
+            # flux values of the uncorrected LC
             pca_dm1.prior_mu = np.array([np.median(uncorrected_lc.flux.value) for _ in range(6)])
             pca_dm1.prior_sigma = np.array([(np.percentile(uncorrected_lc.flux.value, 84)
                                              - np.percentile(uncorrected_lc.flux.value, 16))
@@ -392,37 +441,6 @@ def flux_err_to_mag_err(flux, flux_err):
     m_err_squared=(abs(d_mag_d_flux)**2)*(flux_err**2)
 
     return np.sqrt(m_err_squared)
-
-
-def circle_aperture(data,bkg,radius,PERCENTILE):
-    radius_in_pixels=degs_to_pixels(radius)
-    data_mask = np.zeros_like(data)
-    x_len=np.shape(data_mask)[1]
-    y_len=np.shape(data_mask)[2]
-    #centers
-    cen_x=x_len//2
-    cen_y=y_len//2
-    bkg_mask = np.zeros_like(bkg)
-    bkg_cutoff = getUpperLimit(bkg,PERCENTILE)
-    for i in range(x_len):
-        for j in range(y_len):
-            if (i-cen_x)**2+(j-cen_y)**2<(radius_in_pixels)**2:# star mask condition
-                data_mask[0,i,j]=1
-
-    x_len=np.shape(bkg_mask)[1]
-    y_len=np.shape(bkg_mask)[2]
-    cen_x=x_len//2
-    cen_y=y_len//2
-    for i in range(x_len):
-        for j in range(y_len):
-            if np.logical_and((i-cen_x)**2+(j-cen_y)**2>(radius_in_pixels)**2, bkg[0,i,j]<bkg_cutoff): # sky mask condition
-                bkg_mask[0,i,j]=1            
-
-    star_mask = data_mask==1
-    sky_mask = bkg_mask==1
-#     sky_mask_2 = bkg_mask_2==1
-#     field_mask = field==1
-    return star_mask,sky_mask# return masks
 
 
 def Test_for_Scattered_Light(use_tpfs, full_model_Normalized):
