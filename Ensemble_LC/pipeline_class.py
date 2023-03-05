@@ -13,6 +13,7 @@ import gc
 class ClusterPipeline:
     def __init__(self, radius, cluster_age, output_path="./", cluster_name=None, location=None,
                  upper_limit_method=1, percentile=80, cutout_size=99, scattered_light_frequency=5,
+                 principle_components=6,
                  debug=False):
         """Class for generating lightcurves from TESS cutouts of a specific cluster
 
@@ -37,6 +38,8 @@ class ClusterPipeline:
             How large to make the cutout, by default 99
         scattered_light_frequency : `int`, optional
             Frequency at which to check for scattered light, by default 5
+        principle_components : `int`, optional
+            Number of principle components to use in the DesignMatrix, by default 6
         debug : `bool`, optional
             #TODO DELETE THIS, by default False
         """
@@ -54,6 +57,7 @@ class ClusterPipeline:
         self.percentile = percentile
         self.cutout_size = cutout_size
         self.scattered_light_frequency = scattered_light_frequency
+        self.principle_components = principle_components
         self.debug = debug
 
     def __repr__(self):
@@ -284,16 +288,17 @@ class ClusterPipeline:
 
             # We can use our background aperture to create pixel time series and then take Principal
             # Components of the data using Singular Value Decomposition. This gives us the "top" trends
-            # that are present in the background data. I have picked 6 based on previous studies showing that
-            # is an arbitrarily optimal number of components
-            pca_dm1 = lk.DesignMatrix(use_tpfs.flux.value[:, bkg_aper], name='PCA').pca(6)
+            # that are present in the background data
+            pca_dm1 = lk.DesignMatrix(use_tpfs.flux.value[:, bkg_aper],
+                                      name='PCA').pca(self.principle_components)
 
             # Here we are going to set the priors for the PCA to be located around the
             # flux values of the uncorrected LC
-            pca_dm1.prior_mu = np.array([np.median(uncorrected_lc.flux.value) for _ in range(6)])
+            pca_dm1.prior_mu = np.array([np.median(uncorrected_lc.flux.value)
+                                         for _ in range(self.principle_components)])
             pca_dm1.prior_sigma = np.array([(np.percentile(uncorrected_lc.flux.value, 84)
                                              - np.percentile(uncorrected_lc.flux.value, 16))
-                                            for _ in range(6)])
+                                            for _ in range(self.principle_components)])
 
             #The TESS mission pipeline provides co-trending basis vectors (CBVs) which capture common trends
             # in the dataset. We can use these to de-trend out pixel level data. The mission provides
