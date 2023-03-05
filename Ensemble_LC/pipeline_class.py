@@ -20,16 +20,23 @@ class ClusterPipeline:
         self.radius = radius
         self.cluster_age = cluster_age
         self.callable = cluster_name if cluster_name is not None else location
+        self.location = location
 
     def previously_downloaded(self):
         SUB_FOLDER = 'Corrected_LCs/'
         path = os.path.join(self.output_path, SUB_FOLDER, str(self.callable) + 'output_table.fits')
         return os.path.exists(path)
 
+    def has_tess_data(self):
+        # search for the cluster in TESS using lightkurve
+        search = lk.search_tesscut(self.callable)
+        print(f'{self.callable} has {len(search)} observations')
+        return len(search) > 0
+
     def generate_lightcurves(self):
         LC_PATH = os.path.join(self.output_path, 'Corrected_LCs/',
                                str(self.callable) + 'output_table.fits')
-        if tess_data(self.callable):
+        if self.has_tess_data():
             # Test to see if I have already downloaded and corrected this cluster, If I have, read in the data
             if self.previously_downloaded():
                 output_table = Table.read(LC_PATH, hdu=1)
@@ -113,19 +120,6 @@ class ClusterPipeline:
             output_table.write(LC_PATH, overwrite=True)
 
             return output_table
-
-
-def tess_data(Callable):
-    CLUSTERS = [str(Callable)]
-
-    search = lk.search_tesscut(CLUSTERS[0])#search for the cluster in TESS using lightkurve
-
-    print(CLUSTERS[0]+str(' Has ')+str(len(search))+str(' Observations'))
-
-    if len(search) > 0:
-        return True
-    else:
-        return False 
 
 def degs_to_pixels(degs):
     return degs*60*60/21 #convert degrees to arcsecs and then divide by the resolution of TESS (21 arcsec per pixel)
