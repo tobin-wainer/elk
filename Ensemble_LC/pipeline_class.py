@@ -12,7 +12,7 @@ import gc
 
 class ClusterPipeline:
     def __init__(self, radius, cluster_age, output_path="./", cluster_name=None, location=None,
-                 upper_limit_method=1, percentile=80, cutout_size=99):
+                 upper_limit_method=1, percentile=80, cutout_size=99, debug=False):
 
         assert cluster_name is not None or location is not None,\
             "Must provide EITHER a cluster name or location"
@@ -21,10 +21,12 @@ class ClusterPipeline:
         self.radius = radius
         self.cluster_age = cluster_age
         self.callable = cluster_name if cluster_name is not None else location
+        self.cluster_name = cluster_name
         self.location = location
         self.upper_limit_method = upper_limit_method
         self.percentile = percentile
         self.cutout_size = cutout_size
+        self.debug = debug
 
     def previously_downloaded(self):
         """Check whether the files have previously been downloaded for this cluster
@@ -118,6 +120,8 @@ class ClusterPipeline:
         return star_mask, sky_mask
 
     def scattered_light(self, use_tpfs, full_model_Normalized):
+        if self.debug:
+            return False
         # regular grid covering the domain of the data
         X, Y = np.meshgrid(np.arange(0, self.cutout_size, 1), np.arange(0, self.cutout_size, 1))
         XX = X.flatten()
@@ -178,51 +182,53 @@ class ClusterPipeline:
             # TODO
         scattered_light : `int`
             # TODO
-        LC_Lens : :class:`~numpy.ndarray`
+        lc_Lens : :class:`~numpy.ndarray`
             The length of each lightcurve
         """
         # Knowing how many observations we have to work with
         search = lk.search_tesscut(self.callable)
-        sectors_available = len(search)
+        self.sectors_available = len(search)
 
         # We are also going to document how many observations failed each one of our quality tests
-        failed_download = 0
-        near_edge_or_Sector_1 = 0
-        Scattered_Light = 0
-        good_obs = 0
-        which_sectors_good = []
-        LC_lens = []
+        self.n_failed_download = 0
+        self.n_near_edge = 0
+        self.n_scattered_light = 0
+        self.n_good_obs = 0
+        self.which_sectors_good = []
+        self.lc_lens = []
 
         # start iterating through the observations
-        for current_try_sector in range(sectors_available):
+        for current_try_sector in range(self.sectors_available):
             print(f"Starting Quality Tests for Observation: {current_try_sector}")
 
             # First is the Download Test
             self.downloadable(current_try_sector)
-            if (self.tpfs is None) & (current_try_sector + 1 < sectors_available):
+            if (self.tpfs is None) & (current_try_sector + 1 < self.sectors_available):
                 print('Failed Download')
-                failed_download += 1
+                self.n_failed_download += 1
                 continue
-            elif (self.tpfs is None) & (current_try_sector + 1 == sectors_available):
+            elif (self.tpfs is None) & (current_try_sector + 1 == self.sectors_available):
                 print('Failed Download')
-                failed_download += 1
-                return np.array(int(good_obs)), np.array(int(sectors_available)), np.array(which_sectors_good), np.array(int(failed_download)), np.array(int(near_edge_or_Sector_1)), np.array(int(Scattered_Light)), np.array(LC_lens)
+                self.n_failed_download += 1
+                return
 
             # Now Edge Test
             near_edge = self.near_edge()
-            if near_edge & (current_try_sector + 1 < sectors_available):
+            if near_edge & (current_try_sector + 1 < self.sectors_available):
                 print('Failed Near Edge Test')
-                near_edge_or_Sector_1 += 1
+                self.n_near_edge += 1
                 continue
-            if near_edge & (current_try_sector + 1 == sectors_available):
+            if near_edge & (current_try_sector + 1 == self.sectors_available):
                 print('Failed Near Edge Test')
-                near_edge_or_Sector_1 += 1
-                return np.array(int(good_obs)), np.array(int(sectors_available)),  np.array(which_sectors_good), np.array(int(failed_download)), np.array(int(near_edge_or_Sector_1)), np.array(int(Scattered_Light)), np.array(LC_lens)
+                self.n_near_edge += 1
+                return
             else:
                 use_tpfs = self.tpfs[np.where(self.tpfs.to_lightcurve().quality == 0)]
 
             # Getting Rid of where the flux err < 0
             use_tpfs = use_tpfs[use_tpfs.to_lightcurve().flux_err > 0]
+
+            print(use_tpfs.shape)
 
             # Define the aperture for our Cluster based on previous Vijith functions
             star_mask1 = np.empty([len(use_tpfs), self.cutout_size, self.cutout_size], dtype='bool')
@@ -265,6 +271,7 @@ class ClusterPipeline:
             # MultiScale CBVs, which are at different time scales. In this case, we don't want to use the long
             # scale CBVs, because this may fit out real astrophysical variability. Instead we will use the
             # medium and short time scale CBVs.
+            # TODO: this function seems to be deprecated
             cbvs_1 = lk.correctors.cbvcorrector.download_tess_cbvs(sector=use_tpfs.sector,
                                                                    camera=use_tpfs.camera,
                                                                    ccd=use_tpfs.ccd,
@@ -281,7 +288,7 @@ class ClusterPipeline:
 
             # This combines the different timescale CBVs into a single `designmatrix` object
             cbv_dm_use = lk.DesignMatrixCollection([cbv_dm1, cbv_dm2]).to_designmatrix()
-            
+
             # We can make a simple basis-spline (b-spline) model for astrophysical variability. This will be a
             # flexible, smooth model. The number of knots is important, we want to only correct for very long
             # term variabilty that looks like systematics, so here we have 5 knots, the smaller the better
@@ -337,16 +344,16 @@ class ClusterPipeline:
             # TODO: Conditions might be off here?
             if scattered_light_test:
                 print("Failed Scattered Light Test")
-                Scattered_Light += 1
+                self.n_scattered_light += 1
                 continue
-            if scattered_light_test & (current_try_sector + 1 < sectors_available):
+            if scattered_light_test & (current_try_sector + 1 < self.sectors_available):
                 print("Failed Scattered Light Test")
-                Scattered_Light += 1
-                return np.array(int(good_obs)), np.array(int(sectors_available)), np.array(which_sectors_good), np.array(int(failed_download)), np.array(int(near_edge_or_Sector_1)), np.array(int(Scattered_Light)), np.array(LC_lens)
+                self.n_scattered_light += 1
+                return
             else:
                 print(current_try_sector, "Passed Quality Tests")
-                good_obs += 1
-                which_sectors_good.append(current_try_sector)
+                self.n_good_obs += 1
+                self.which_sectors_good.append(current_try_sector)
                 # This Else Statement means that the Lightcurve is good and has passed our quality checks
 
                 # Writing out the data, so I never have to Download and Correct again, but only if there is data
@@ -373,14 +380,10 @@ class ClusterPipeline:
 
                 path = os.path.join(self.output_path, "Figures", "LCs",
                                     f'{self.callable}_Full_Corrected_LC_Observation_{current_try_sector}.png')
-                plt.savefig(path, format='png') 
-                plt.close(fig) 
+                plt.savefig(path, format='png')
+                plt.close(fig)
 
-                LC_lens.append(len(full_corrected_lightcurve_table))
-
-        return np.array(int(good_obs)), np.array(int(sectors_available)),\
-            np.array(which_sectors_good), np.array(int(failed_download)),\
-                np.array(int(near_edge_or_Sector_1)), np.array(int(Scattered_Light)), np.array(LC_lens)
+                self.lc_lens.append(len(full_corrected_lightcurve_table))
 
     def generate_lightcurves(self):
         LC_PATH = os.path.join(self.output_path, 'Corrected_LCs/',
@@ -395,20 +398,17 @@ class ClusterPipeline:
                 # This else statement refers to the Cluster Not Previously Being Downloaded
                 # So Calling funcion to download and correct data
                 self.get_lcs()
-                print(self.good_observations)
-            # Now that I have my data, if it is a light curve, I'm going to make the figure, and
-            if self.good_observations != 0:
 
-                #Making the Output Table
-                name___=[Cluster_name]
-                HTD=[True]
-                OB_use=[self.good_observations]
-                OB_av=[self.obs_available]
-                OB_good=[str(self.which_ones_good)]
-                OB_fd=[self.obs_failed_download]
-                OB_ne=[self.obs_near_Edge]
-                OB_sl=[self.obs_Scattered_Light]
-                OB_lens=[str((self.lc_lens))]
+                # Making the Output Table
+                name___ = [self.cluster_name]
+                HTD = [True]
+                OB_use = [self.n_good_obs]
+                OB_av = [self.sectors_available]
+                OB_good = [str(self.which_sectors_good)]
+                OB_fd = [self.n_failed_download]
+                OB_ne = [self.n_near_edge]
+                OB_sl = [self.n_scattered_light]
+                OB_lens = [str((self.lc_lens))]
 
                 output_table = Table([name___, [self.location], [self.radius], [self.cluster_age], HTD, OB_av,
                                       OB_use, OB_good, OB_fd, OB_ne, OB_sl, OB_lens],
@@ -420,39 +420,17 @@ class ClusterPipeline:
                 # Writing out the data, so I never have to Download and Correct again
                 output_table.write(LC_PATH)
 
-                # now I'm going to read in the lightcurves and attach them to the output table to have all data in one place
-                for i in range(output_table['Num_Good_Obs'][0]):
-                    light_curve_table = Table.read(LC_PATH.replace("output_table", ""), hdu=i + 1)
-                    light_curve_table.write(LC_PATH, append=True)
-                
-                return output_table
-                    
-                
-            else:
-                # This else statement refers to there being No good Observations
+                if self.n_good_obs != 0:
+                    # now I'm going to read in the lightcurves and attach them to the output table to have all data in one place
+                    for i in range(output_table['Num_Good_Obs'][0]):
+                        light_curve_table = Table.read(LC_PATH.replace("output_table", ""), hdu=i + 1)
+                        light_curve_table.write(LC_PATH, append=True)
 
+                    return output_table
 
-                name___=[Cluster_name]
-                HTD=[True]
-                OB_use=[Good_observations]
-                OB_av=[Obs_Available]
-                OB_good=[str(WhichOnes_Good)]
-                OB_fd=[Obs_failed_download]
-                OB_ne=[Obs_near_Edge]
-                OB_sl=[Obs_Scattered_Light]
-                OB_lens=[str((LC_lens))]
-
-
-                output_table=Table([name___, [Location], [Radius], [Cluster_Age], HTD, OB_av, OB_use, OB_good, OB_fd, OB_ne, OB_sl, OB_lens],
-                                names=('Name', 'Location', 'Radius [deg]', 'Log Age', 'Has_TESS_Data', 'Obs_Available',
-                                        'Num_Good_Obs', 'Which_Obs_Good', 'Obs_DL_Failed', 'Obs_Near_Edge_S1', 'Obs_Scattered_Light', 'Light_Curve_Lengths'))
-                
-                output_table.write(LC_PATH)
-                
-                return output_table 
-            
-        else: #This Means that there is no TESS coverage for the Cluster (Easiest to check)
-            name___= [Cluster_name]       
+        else:
+            # This Means that there is no TESS coverage for the Cluster (Easiest to check)
+            name___= [self.cluster_name]       
             HTD=[False]  
             OB_use= np.ma.array([0], mask=[1])
             OB_good= np.ma.array([0], mask=[1])
@@ -462,12 +440,12 @@ class ClusterPipeline:
             OB_sl= np.ma.array([0], mask=[1])  
             OB_lens= np.ma.array([0], mask=[1])
 
-            output_table=Table([name___, [Location], [Radius], [Cluster_Age], HTD, OB_av, OB_use, [str(OB_good)], OB_fd, OB_ne, OB_sl, [str(OB_lens)]],
-                            names=('Name', 'Location', 'Radius [deg]', 'Log Age', 'Has_TESS_Data', 'Obs_Available',
-                                    'Num_Good_Obs', 'Which_Obs_Good', 'Obs_DL_Failed', 'Obs_Near_Edge_S1', 'Obs_Scattered_Light', 'Light_Curve_Lengths'))
-
+            output_table = Table([name___, [self.location], [self.radius], [self.cluster_age], HTD, OB_av,
+                                OB_use, [str(OB_good)], OB_fd, OB_ne, OB_sl, [str(OB_lens)]],
+                                names=('Name', 'Location', 'Radius [deg]', 'Log Age', 'Has_TESS_Data',
+                                        'Obs_Available', 'Num_Good_Obs', 'Which_Obs_Good', 'Obs_DL_Failed',
+                                        'Obs_Near_Edge_S1', 'Obs_Scattered_Light', 'Light_Curve_Lengths'))
             output_table.write(LC_PATH, overwrite=True)
-
             return output_table
 
     def access_lightcurve(self, sector):
@@ -475,17 +453,16 @@ class ClusterPipeline:
         if not os.path.exists(path):
             print("The Lightcurve has not been downloaded and corrected. Please run 'Generate_Lightcurves()' function for this cluster.")
             return None, None
-            
-        output_table= Table.read(path, hdu=1)
+        output_table = Table.read(path, hdu=1)
 
         # Get the Light Curve
         if output_table['Num_Good_Obs'] == 1:
-            light_curve_table=Table.read(path, hdu=2)
+            light_curve_table = Table.read(path, hdu=2)
         else:
-            light_curve_table=Table.read(path, hdu=(int(sector)+2))
+            light_curve_table = Table.read(path, hdu=(int(sector)+2))
 
         # Now I am going to save a plot of the light curve to go visually inspect later
-        range_= max(light_curve_table['flux']) - min(light_curve_table['flux'])
+        range_ = max(light_curve_table['flux']) - min(light_curve_table['flux'])
         fig = plt.figure()
         plt.title(f'Observation: {sector}')
         plt.plot(light_curve_table['time'], light_curve_table['flux'], color='k', linewidth=.5)
@@ -500,17 +477,21 @@ class ClusterPipeline:
 
         return fig, light_curve_table
 
+
 def degs_to_pixels(degs):
     return degs*60*60/21 #convert degrees to arcsecs and then divide by the resolution of TESS (21 arcsec per pixel)
 
+
 def pixels_to_degs(pixels):
     return pixels*21/(60*60) #convert degrees to arcsecs and then divide by the resolution of TESS (21 arcsec per pixel)
+
 
 def flux_to_mag(flux):
     m1=10    
     f1=15000    
     mag=2.5*(np.log10(f1/flux)) + m1    
     return mag
+
 
 def flux_err_to_mag_err(flux, flux_err):
     d_mag_d_flux= -2.5/(flux*np.log(10))
