@@ -50,15 +50,15 @@ class ClusterPipeline:
         print(f'{self.callable} has {len(search)} observations')
         return len(search) > 0
 
-    def downloadable(self, current_try_sector):   
+    def downloadable(self, ind):   
         # Using a Try statement to see if we can download the cluster data If we cannot
         try:
-            lk.search_tesscut(self.callable)[current_try_sector].download(cutout_size=(self.cutout_size,
-                                                                                       self.cutout_size))
+            tpfs = lk.search_tesscut(self.callable)[ind].download(cutout_size=(self.cutout_size,
+                                                                               self.cutout_size))
         except:
             print("No Download")
-            return 'Bad'
-        return 'Fine'
+            tpfs = None
+        return tpfs
 
     def get_lcs(self):
         """Get lightcurves for each of the observations of the cluster
@@ -97,17 +97,16 @@ class ClusterPipeline:
             print(f"Starting Quality Tests for Observation: {current_try_sector}")
 
             # First is the Download Test
-            if (self.downloadable(current_try_sector) == 'Bad') & (current_try_sector + 1 < sectors_available):
+            tpfs = self.downloadable(current_try_sector)
+            if (tpfs is None) & (current_try_sector + 1 < sectors_available):
                 print('Failed Download')
                 failed_download += 1
                 continue
-            if (self.downloadable(current_try_sector) == 'Bad') & (current_try_sector + 1 == sectors_available):
+            elif (tpfs is None) & (current_try_sector + 1 == sectors_available):
                 print('Failed Download')
                 failed_download += 1
                 return np.array(int(good_obs)), np.array(int(sectors_available)), np.array(which_sectors_good), np.array(int(failed_download)), np.array(int(near_edge_or_Sector_1)), np.array(int(Scattered_Light)), np.array(LC_lens)
-            else:
-                tpfs = lk.search_tesscut(self.callable)[current_try_sector].download(cutout_size=(cutout_size, cutout_size))
-            
+
             #Now Edge Test
             
             if (Test_near_edge(tpfs) == 'Bad') & (current_try_sector + 1 < sectors_available):
