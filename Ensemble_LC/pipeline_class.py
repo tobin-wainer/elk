@@ -11,7 +11,8 @@ import gc
 
 
 class ClusterPipeline:
-    def __init__(self, radius, cluster_age, output_path="./", cluster_name=None, location=None):
+    def __init__(self, radius, cluster_age, output_path="./", cluster_name=None, location=None,
+                 upper_limit_method=1, percentile=80, cutout_size=99):
 
         assert cluster_name is not None or location is not None,\
             "Must provide EITHER a cluster name or location"
@@ -21,19 +22,64 @@ class ClusterPipeline:
         self.cluster_age = cluster_age
         self.callable = cluster_name if cluster_name is not None else location
         self.location = location
+        self.upper_limit_method = upper_limit_method
+        self.percentile = percentile
+        self.cutout_size = cutout_size
 
     def previously_downloaded(self):
-        SUB_FOLDER = 'Corrected_LCs/'
-        path = os.path.join(self.output_path, SUB_FOLDER, str(self.callable) + 'output_table.fits')
+        """Check whether the files have previously been downloaded for this cluster
+
+        Returns
+        -------
+        exists : `bool`
+            Whether the file exists
+        """
+        path = os.path.join(self.output_path, 'Corrected_LCs/', str(self.callable) + 'output_table.fits')
         return os.path.exists(path)
 
     def has_tess_data(self):
+        """Check whether TESS has data on the cluster
+
+        Returns
+        -------
+        has_data : `bool`
+            Whether these is at least one observation in TESS
+        """
         # search for the cluster in TESS using lightkurve
         search = lk.search_tesscut(self.callable)
         print(f'{self.callable} has {len(search)} observations')
         return len(search) > 0
 
+    def downloadable(self, current_try_sector):   
+        # Using a Try statement to see if we can download the cluster data If we cannot
+        try:
+            lk.search_tesscut(self.callable)[current_try_sector].download(cutout_size=(self.cutout_size,
+                                                                                       self.cutout_size))
+        except:
+            print("No Download")
+            return 'Bad'
+        return 'Fine'
+
     def get_lcs(self):
+        """Get lightcurves for each of the observations of the cluster
+
+        Returns
+        -------
+        good_obs : `int`
+            Number of good observations
+        sectors_available : `int`
+            How many sectors of data are available
+        which_sectors_good : :class:`~numpy.ndarray`
+            Which sectors are good
+        failed_download : `int`
+            How many observations failed to download
+        near_edge_or_Sector_1 : `int`
+            # TODO
+        scattered_light : `int`
+            # TODO
+        LC_Lens : :class:`~numpy.ndarray`
+            The length of each lightcurve
+        """
         # Knowing how many observations we have to work with
         search = lk.search_tesscut(self.callable)
         sectors_available = len(search)
@@ -51,11 +97,11 @@ class ClusterPipeline:
             print(f"Starting Quality Tests for Observation: {current_try_sector}")
 
             # First is the Download Test
-            if (downloadable(self.callable, current_try_sector) == 'Bad') & (current_try_sector + 1 < sectors_available):
+            if (self.downloadable(current_try_sector) == 'Bad') & (current_try_sector + 1 < sectors_available):
                 print('Failed Download')
                 failed_download += 1
                 continue
-            if (downloadable(self.callable, current_try_sector) == 'Bad') & (current_try_sector + 1 == sectors_available)):
+            if (self.downloadable(current_try_sector) == 'Bad') & (current_try_sector + 1 == sectors_available):
                 print('Failed Download')
                 failed_download += 1
                 return np.array(int(good_obs)), np.array(int(sectors_available)), np.array(which_sectors_good), np.array(int(failed_download)), np.array(int(near_edge_or_Sector_1)), np.array(int(Scattered_Light)), np.array(LC_lens)
@@ -82,12 +128,11 @@ class ClusterPipeline:
             star_mask1 = np.empty([len(use_tpfs), cutout_size, cutout_size], dtype='bool')
             sky_mask1 = np.empty([len(use_tpfs), cutout_size, cutout_size], dtype='bool')
 
-            star_mask1[0], sky_mask1[0] = circle_aperture(use_tpfs[0].flux.value, use_tpfs[0].flux.value, self.radius, PERCENTILE)
+            star_mask1[0], sky_mask1[0] = circle_aperture(use_tpfs[0].flux.value, use_tpfs[0].flux.value, self.radius, self.percentile)
 
             keep_mask = star_mask1[0]
-            
+
             # Now we will begin to correct the lightcurve
-            
             uncorrected_lc = use_tpfs.to_lightcurve(aperture_mask=keep_mask)
 
             # Time average of the pixels in the TPF:
@@ -97,7 +142,7 @@ class ClusterPipeline:
             max_frame -= np.median(max_frame, axis=0)
 
             # This aperture is any "faint" pixels:
-            bkg_aper = max_frame < np.percentile(max_frame, PERCENTILE)
+            bkg_aper = max_frame < np.percentile(max_frame, self.percentile)
 
             # The average light curve of the faint pixels is a good estimate of the scattered light
             scattered_light = use_tpfs.flux.value[:, bkg_aper].mean(axis=1)
@@ -390,22 +435,6 @@ def getUpperLimit(dataDistribution,PERCENTILE):
 
     else:
         return 150
-     
-
-UPPER_LIMIT_METHOD = 1
-PERCENTILE = 80
-cutout_size= 99 #Max for unknown reasons
-
-def downloadable(Callable, current_try_sector):   
-    use_name=[Callable]
-    #Using a Try statement to see if we can download the cluster data If we cannot
-    try:
-        tpfs=lk.search_tesscut(use_name[0])[current_try_sector].download(cutout_size=(cutout_size, cutout_size))
-    except:
-        print("No Download")
-        return 'Bad'
-
-    return 'Fine'
 
 
 def Test_near_edge(tpfs): 
