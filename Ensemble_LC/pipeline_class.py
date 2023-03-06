@@ -2,8 +2,8 @@ import numpy as np
 import lightkurve as lk
 import matplotlib.pyplot as plt
 import scipy
-from astropy.table import Table
-from astropy.table import Column
+from astropy.table import Table, Column
+import astropy.units as u
 from tqdm import tqdm
 
 import os.path
@@ -20,9 +20,11 @@ class ClusterPipeline:
         Parameters
         ----------
         radius : `float`
-            Radius of the cluster in #TODO What units?
+            Radius of the cluster. If a `float` is given then unit is assumed to be degrees. Otherwise, I'll
+            convert your unit to what I need.
         cluster_age : `float`
-            Age of the cluster in #TODO What units?
+            Age of the cluster. If a `float` is given then unit is assumed to be dex. Otherwise, I'll
+            convert your unit to what I need.
         output_path : `str`, optional
             Path to a folder in which to save outputs - must have subfolders Corrected_LCs/ and Figures/LCs/,
             by default "./"
@@ -46,6 +48,17 @@ class ClusterPipeline:
 
         assert cluster_name is not None or location is not None,\
             "Must provide at least one of `cluster_name` and `location`"
+
+        # convert radius to degrees if it has units
+        if hasattr(radius, 'unit'):
+            radius = radius.to(u.deg).value
+
+        # convert cluster age to dex if it has units
+        if hasattr(cluster_age, 'unit'):
+            if cluster_age.unit == u.dex:
+                cluster_age = cluster_age.value
+            else:
+                cluster_age = np.log10(cluster_age.to(u.yr).value)
 
         self.output_path = output_path
         self.radius = radius
