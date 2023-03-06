@@ -1,9 +1,10 @@
-# TESS_Cluster_Project
-This Repo is for my Postbach project, making integrated light, lightcurves of star clusters in the local Universe from TESS
+# ELK
+This Repo is for the Python package ELK, making integrated light, lightcurves from TESS Data.
+
+This package includes the pipelines I created to download and correct ensemble light curves of star clusters in TESS data. While I have used ELK for star cluster science, it can be used by any user to create ensemble light curves for any given aperature. 
 
 
 ## TODO: Update all of this
-This is the package dedicated to the pipelines I created to download and correct ensemble light curves of star clusters, and calculate their variabilty metrics.
 
 A detailed account and example of each pipeline can be found in the Jupyter Notebooks titled "Detailed and Simple Pipeline to get Light curves", "Detailed and Simple Pipeline to Generate All Sector Lightcurves", and "Detailed and Simple Pipeline to Calculate Variability Statistics from Light Curves" respectively.
 
