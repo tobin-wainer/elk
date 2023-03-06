@@ -2,7 +2,7 @@ import numpy as np
 import lightkurve as lk
 import matplotlib.pyplot as plt
 import scipy
-from astropy.table import Table, Column
+from astropy.table import Table, Column, join, vstack
 import astropy.units as u
 from tqdm import tqdm
 
