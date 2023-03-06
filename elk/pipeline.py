@@ -2,17 +2,19 @@ import numpy as np
 import lightkurve as lk
 import matplotlib.pyplot as plt
 import scipy
-from astropy.table import Table
-from astropy.table import Column
+from astropy.table import Table, Column, join, vstack
+import astropy.units as u
 from tqdm import tqdm
 
 import os.path
 import gc
 
+TESS_RESOLUTION = 21 * u.arcsec / u.pixel
+
 
 class EnsembleLC:
     def __init__(self, radius, cluster_age, output_path="./", cluster_name=None, location=None,
-                 upper_limit_method=1, percentile=80, cutout_size=99, scattered_light_frequency=5,
+                 percentile=80, cutout_size=99, scattered_light_frequency=5,
                  principle_components=6,
                  debug=False):
         """Class for generating lightcurves from TESS cutouts
@@ -20,9 +22,11 @@ class EnsembleLC:
         Parameters
         ----------
         radius : `float`
-            Radius of the cluster in #TODO What units?
+            Radius of the cluster. If a `float` is given then unit is assumed to be degrees. Otherwise, I'll
+            convert your unit to what I need.
         cluster_age : `float`
-            Age of the cluster in #TODO What units?
+            Age of the cluster. If a `float` is given then unit is assumed to be dex. Otherwise, I'll
+            convert your unit to what I need.
         output_path : `str`, optional
             Path to a folder in which to save outputs - must have subfolders Corrected_LCs/ and Figures/LCs/,
             by default "./"
@@ -30,8 +34,6 @@ class EnsembleLC:
             Name of the cluster, by default None
         location : `str`, optional
             Location of the cluster #TODO What format here?, by default None
-        upper_limit_method : `int`, optional
-            Which upper limit method to use #TODO more details, by default 1
         percentile : `int`, optional
             Which percentile to use in the upper limit calculation, by default 80
         cutout_size : `int`, optional
@@ -44,8 +46,45 @@ class EnsembleLC:
             #TODO DELETE THIS, by default False
         """
 
+        # make sure that some sort of identifier has been provided
         assert cluster_name is not None or location is not None,\
             "Must provide at least one of `cluster_name` and `location`"
+
+        # convert radius to degrees if it has units
+        if hasattr(radius, 'unit'):
+            radius = radius.to(u.deg).value
+
+        # convert cluster age to dex if it has units
+        if hasattr(cluster_age, 'unit'):
+            if cluster_age.unit == u.dex:
+                cluster_age = cluster_age.value
+            else:
+                cluster_age = np.log10(cluster_age.to(u.yr).value)
+
+        # check main output folder
+        if not os.path.exists(output_path):
+            print(f"WARNING: There is no output folder at the path that you supplied ({output_path})")
+            create_it = input(("  Would you like me to create it for you? "
+                               "(If not then no files will be saved) [Y/n]"))
+            if create_it == "" or create_it.lower() == "y":
+                # create the folder
+                os.mkdir(output_path)
+            else:
+                output_path = None
+
+        # check subfolders
+        self.save = {"lcs": False, "figures": False}
+        if output_path is not None:
+            for subpath, key in zip(["Corrected_LCs", os.path.join("Figures", "LCs")], ["lcs", "figures"]):
+                path = os.path.join(output_path, subpath)
+                if not os.path.exists(path):
+                    print(f"WARNING: The necessary subfolder at ({path}) does not exist")
+                    create_it = input(("  Would you like me to create it for you? "
+                                       "(If not then these files will not be saved) [Y/n]"))
+                    if create_it == "" or create_it.lower() == "y":
+                        # create the folder
+                        os.makedirs(path)
+                        self.save[key] = True
 
         self.output_path = output_path
         self.radius = radius
@@ -53,7 +92,6 @@ class EnsembleLC:
         self.callable = cluster_name if cluster_name is not None else location
         self.cluster_name = cluster_name
         self.location = location
-        self.upper_limit_method = upper_limit_method
         self.percentile = percentile
         self.cutout_size = cutout_size
         self.scattered_light_frequency = scattered_light_frequency
@@ -92,6 +130,7 @@ class EnsembleLC:
         try:
             self.tpfs = lk.search_tesscut(self.callable)[ind].download(cutout_size=(self.cutout_size,
                                                                                     self.cutout_size))
+        # TODO: Bare Excepts are bad, should be more specific here
         except:
             print("No Download")
             self.tpfs = None
@@ -106,27 +145,8 @@ class EnsembleLC:
         min_flux_greater_one = np.min(t1[0].flux.value) > 1
         return ~(min_not_nan & not_sector_one & min_flux_greater_one)
 
-    def get_upper_limit(self, dataDistribution):
-        # TODO: Several of these methods don't work
-        if self.upper_limit_method == 1:
-            return np.nanpercentile(dataDistribution, self.percentile)
-
-        elif self.upper_limit_method == 2:
-            hist = np.histogram(dataDistribution, bins=BINS, range=(0, 3000))  # Bin the data
-            return hist[1][np.argmax(hist[0])]  # Return the flux corresponding to the most populated bin
-
-        elif self.upper_limit_method == 3:
-            pass
-
-        elif self.upper_limit_method == 4:
-            numMaxima = countMaxima(tpfs[i][frame].flux.reshape((self.cutout_size, self.cutout_size)))
-            numPixels = np.count_nonzero(~np.isnan(tpfs[i][frame].flux))
-            return np.nanpercentile(dataDistribution, 100 - numMaxima / numPixels * 100)
-        else:
-            return 150
-
     def circle_aperture(self, data, bkg):
-        radius_in_pixels = degs_to_pixels(self.radius)
+        radius_in_pixels = (self.radius * u.deg / TESS_RESOLUTION).to(u.pixel).value
         data_mask = np.zeros_like(data)
         x_len = np.shape(data_mask)[1]
         y_len = np.shape(data_mask)[2]
@@ -134,10 +154,10 @@ class EnsembleLC:
         cen_x = x_len//2
         cen_y = y_len//2
         bkg_mask = np.zeros_like(bkg)
-        bkg_cutoff = self.get_upper_limit(bkg)
+        bkg_cutoff = np.nanpercentile(bkg, self.percentile)
         for i in range(x_len):
             for j in range(y_len):
-                if (i-cen_x)**2 + (j-cen_y)**2 < (radius_in_pixels)**2:   # star mask condition
+                if (i - cen_x)**2 + (j - cen_y)**2 < (radius_in_pixels)**2:   # star mask condition
                     data_mask[0, i, j] = 1
 
         # TODO: not a fan of variable overwrites
@@ -300,22 +320,21 @@ class EnsembleLC:
                                              - np.percentile(uncorrected_lc.flux.value, 16))
                                             for _ in range(self.principle_components)])
 
-            #The TESS mission pipeline provides co-trending basis vectors (CBVs) which capture common trends
+            # The TESS mission pipeline provides co-trending basis vectors (CBVs) which capture common trends
             # in the dataset. We can use these to de-trend out pixel level data. The mission provides
             # MultiScale CBVs, which are at different time scales. In this case, we don't want to use the long
             # scale CBVs, because this may fit out real astrophysical variability. Instead we will use the
             # medium and short time scale CBVs.
-            # TODO: this function seems to be deprecated
-            cbvs_1 = lk.correctors.cbvcorrector.download_tess_cbvs(sector=use_tpfs.sector,
-                                                                   camera=use_tpfs.camera,
-                                                                   ccd=use_tpfs.ccd,
-                                                                   cbv_type='MultiScale',
-                                                                   band=2).interpolate(use_tpfs.to_lightcurve())
-            cbvs_2 = lk.correctors.cbvcorrector.download_tess_cbvs(sector=use_tpfs.sector,
-                                                                   camera=use_tpfs.camera,
-                                                                   ccd=use_tpfs.ccd,
-                                                                   cbv_type='MultiScale',
-                                                                   band=3).interpolate(use_tpfs.to_lightcurve())
+            cbvs_1 = lk.correctors.cbvcorrector.load_tess_cbvs(sector=use_tpfs.sector,
+                                                               camera=use_tpfs.camera,
+                                                               ccd=use_tpfs.ccd,
+                                                               cbv_type='MultiScale',
+                                                               band=2).interpolate(use_tpfs.to_lightcurve())
+            cbvs_2 = lk.correctors.cbvcorrector.load_tess_cbvs(sector=use_tpfs.sector,
+                                                               camera=use_tpfs.camera,
+                                                               ccd=use_tpfs.ccd,
+                                                               cbv_type='MultiScale',
+                                                               band=3).interpolate(use_tpfs.to_lightcurve())
 
             cbv_dm1 = cbvs_1.to_designmatrix(cbv_indices=np.arange(1, 8))
             cbv_dm2 = cbvs_2.to_designmatrix(cbv_indices=np.arange(1, 8))
@@ -394,10 +413,11 @@ class EnsembleLC:
                 full_corrected_lightcurve_table.add_column(Column(flux_to_mag(full_corrected_lightcurve_table['flux'])), name='mag')
                 full_corrected_lightcurve_table.add_column(Column(flux_err_to_mag_err(full_corrected_lightcurve_table['flux'], full_corrected_lightcurve_table['flux_err'])), name='mag_err')
 
-                full_corrected_lightcurve_table.write(os.path.join(self.output_path,
-                                                                   "Corrected_LCs",
-                                                                   self.callable + ".fits"),
-                                                      format='fits', append=True)
+                if self.output_path is not None and self.save["lcs"]:
+                    full_corrected_lightcurve_table.write(os.path.join(self.output_path,
+                                                                    "Corrected_LCs",
+                                                                    self.callable + ".fits"),
+                                                        format='fits', append=True)
 
                 # Now I am going to save a plot of the light curve to go visually inspect later
                 range_ = max(full_corrected_lightcurve_table['flux']) - min(full_corrected_lightcurve_table['flux'])
@@ -410,10 +430,10 @@ class EnsembleLC:
                 plt.text(full_corrected_lightcurve_table['time'][0],
                          (max(full_corrected_lightcurve_table['flux'])-(range_*0.05)),
                          self.callable, fontsize=14)
-                plt.subplots_adjust(right=1.4, top=1)
 
-                path = os.path.join(self.output_path, "Figures", "LCs",
-                                    f'{self.callable}_Full_Corrected_LC_Observation_{current_try_sector}.png')
+                if self.output_path is not None and self.save["figures"]:
+                    path = os.path.join(self.output_path, "Figures", "LCs",
+                                        f'{self.callable}_Full_Corrected_LC_Observation_{current_try_sector}.png')
                 plt.savefig(path, format='png')
                 plt.close(fig)
 
@@ -459,9 +479,10 @@ class EnsembleLC:
                                             'Light_Curve_Lengths'))
 
                 # Writing out the data, so I never have to Download and Correct again
-                output_table.write(LC_PATH)
+                if self.output_path is not None and self.save["lcs"]:
+                    output_table.write(LC_PATH)
 
-                if self.n_good_obs != 0:
+                if self.n_good_obs != 0 and self.output_path is not None and self.save["lcs"]:
                     # now I'm going to read in the lightcurves and attach them to the output table to have all data in one place
                     for i in range(output_table['Num_Good_Obs'][0]):
                         light_curve_table = Table.read(LC_PATH.replace("output_table", ""), hdu=i + 1)
@@ -486,7 +507,9 @@ class EnsembleLC:
                                 names=('Name', 'Location', 'Radius [deg]', 'Log Age', 'Has_TESS_Data',
                                         'Obs_Available', 'Num_Good_Obs', 'Which_Obs_Good', 'Obs_DL_Failed',
                                         'Obs_Near_Edge_S1', 'Obs_Scattered_Light', 'Light_Curve_Lengths'))
-            output_table.write(LC_PATH, overwrite=True)
+
+            if self.output_path is not None and self.save["lcs"]:
+                output_table.write(LC_PATH, overwrite=True)
             return output_table
 
     def access_lightcurve(self, sector):
@@ -516,16 +539,6 @@ class EnsembleLC:
         plt.close(fig)
 
         return fig, light_curve_table
-
-
-def degs_to_pixels(degs):
-    # convert degrees to arcsecs and then divide by the resolution of TESS (21 arcsec per pixel)
-    return degs*60*60/21
-
-
-def pixels_to_degs(pixels):
-    # convert degrees to arcsecs and then divide by the resolution of TESS (21 arcsec per pixel)
-    return pixels*21/(60*60)
 
 
 def flux_to_mag(flux):
