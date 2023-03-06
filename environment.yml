@@ -1,4 +1,4 @@
-name: cluster-pipeline
+name: elk
 channels:
   - defaults
   - conda-forge
@@ -14,6 +14,7 @@ dependencies:
   - ipython
   - pandas
   - tqdm
+  - h5py
   - pip:
     - lightkurve
     - tables
