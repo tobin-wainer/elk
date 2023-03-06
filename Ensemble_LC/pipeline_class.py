@@ -9,6 +9,8 @@ from tqdm import tqdm
 import os.path
 import gc
 
+TESS_RESOLUTION = 21 * u.arcsec / u.pixel
+
 
 class ClusterPipeline:
     def __init__(self, radius, cluster_age, output_path="./", cluster_name=None, location=None,
@@ -139,7 +141,7 @@ class ClusterPipeline:
             return 150
 
     def circle_aperture(self, data, bkg):
-        radius_in_pixels = degs_to_pixels(self.radius)
+        radius_in_pixels = (self.radius * u.deg / TESS_RESOLUTION).to(u.arcsecond).value
         data_mask = np.zeros_like(data)
         x_len = np.shape(data_mask)[1]
         y_len = np.shape(data_mask)[2]
@@ -529,16 +531,6 @@ class ClusterPipeline:
         plt.close(fig)
 
         return fig, light_curve_table
-
-
-def degs_to_pixels(degs):
-    # convert degrees to arcsecs and then divide by the resolution of TESS (21 arcsec per pixel)
-    return degs*60*60/21
-
-
-def pixels_to_degs(pixels):
-    # convert degrees to arcsecs and then divide by the resolution of TESS (21 arcsec per pixel)
-    return pixels*21/(60*60)
 
 
 def flux_to_mag(flux):
