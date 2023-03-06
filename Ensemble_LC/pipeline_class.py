@@ -141,7 +141,7 @@ class ClusterPipeline:
             return 150
 
     def circle_aperture(self, data, bkg):
-        radius_in_pixels = (self.radius * u.deg / TESS_RESOLUTION).to(u.arcsecond).value
+        radius_in_pixels = (self.radius * u.deg / TESS_RESOLUTION).to(u.pixel).value
         data_mask = np.zeros_like(data)
         x_len = np.shape(data_mask)[1]
         y_len = np.shape(data_mask)[2]
