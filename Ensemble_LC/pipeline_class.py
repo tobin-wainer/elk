@@ -10,12 +10,12 @@ import os.path
 import gc
 
 
-class ClusterPipeline:
+class EnsembleLC:
     def __init__(self, radius, cluster_age, output_path="./", cluster_name=None, location=None,
                  upper_limit_method=1, percentile=80, cutout_size=99, scattered_light_frequency=5,
                  principle_components=6,
                  debug=False):
-        """Class for generating lightcurves from TESS cutouts of a specific cluster
+        """Class for generating lightcurves from TESS cutouts
 
         Parameters
         ----------
