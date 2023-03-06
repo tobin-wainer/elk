@@ -1,0 +1,14 @@
+python
+numpy
+pip
+matplotlib
+astropy
+scipy
+jupyter
+jupyterlab
+ipython
+pandas
+tqdm
+h5py
+lightkurve
+tables
