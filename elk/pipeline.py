@@ -391,12 +391,11 @@ class EnsembleLC:
                                                     names=('time', 'flux', 'flux_err'))
 
             scattered_light_test = self.scattered_light(use_tpfs, full_model_Normalized)
-            # TODO: Conditions might be off here?
-            if scattered_light_test:
+            if scattered_light_test & (current_try_sector + 1 < self.sectors_available):
                 print("Failed Scattered Light Test")
                 self.n_scattered_light += 1
                 continue
-            if scattered_light_test & (current_try_sector + 1 < self.sectors_available):
+            if scattered_light_test & (current_try_sector + 1 == self.sectors_available):
                 print("Failed Scattered Light Test")
                 self.n_scattered_light += 1
                 return
