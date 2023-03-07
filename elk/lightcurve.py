@@ -88,7 +88,7 @@ class TESScutLightcurve():
 
         star_mask = data_mask == 1
         sky_mask = bkg_mask == 1
-        return star_mask, sky_mask
+        return star_mask[0], sky_mask[0]
 
     def correct_lc(self):
         # Time average of the pixels in the TPF:
