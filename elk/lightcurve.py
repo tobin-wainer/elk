@@ -14,14 +14,24 @@ class TESScutLightcurve():
 
         self.lk_search_results = lk_search_result
         self._tpfs = tpfs
-        self._use_tpfs = None
         self.cutout_size = cutout_size
+
+        self._use_tpfs = None
+        self._basic_lc = None
+        self._uncorrected_lc = None
+
 
     @property
     def tpfs(self):
         if self._tpfs is None:
             self._tpfs = self.lk_search_results.download(cutout_size=(self.cutout_size, self.cutout_size))
         return self._tpfs
+
+    @property
+    def use_tpfs(self):
+        if self._use_tpfs is None:
+            self._use_tpfs = self.tpfs[(self.basic_lc.quality == 0) & (self.basic_lc.flux_err > 0)]
+        return self._use_tpfs
 
     @property
     def basic_lc(self):
@@ -36,12 +46,6 @@ class TESScutLightcurve():
             self.star_mask, _ = self.circle_aperture(self.use_tpfs[0].flux.value, self.use_tpfs[0].flux.value)
             self._uncorrected_lc = self.use_tpfs.to_lightcurve(aperture_mask=self.star_mask)
         return self._uncorrected_lc
-
-    @property
-    def use_tpfs(self):
-        if self._use_tpfs is None:
-            self._use_tpfs = self.tpfs[(self.basic_lc.quality == 0) & (self.basic_lc.flux_err > 0)]
-        return self._use_tpfs
 
     def near_edge(self):
         min_flux = np.min(self.use_tpfs[0].flux.value)
