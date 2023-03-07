@@ -177,7 +177,7 @@ class TESScutLightcurve():
                                                       r1.diagnostic_lightcurves['CBVs'].flux.value +
                                                       r1.diagnostic_lightcurves['spline'].flux.value)
 
-        self.full_model_normalised = full_model_Normalized
+        self.full_model_normalized = full_model_Normalized
 
         # Calculate Lightcurves
         # NOTE - we are also calculating a lightcurve which does not include the spline model,
