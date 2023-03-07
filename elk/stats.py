@@ -1,59 +1,16 @@
 import numpy as np
-from astropy.table import Table, join, MaskedColumn, vstack
 import matplotlib.pyplot as plt
-import matplotlib.colors as colors
 import scipy
-from astropy.time import Time
-import pandas as pd
-import re
-import seaborn as sns
-import datetime
-from datetime import datetime
-from datetime import timedelta
-from math import e
-from math import pi
-from astropy.table import Column
 from math import sqrt
-import numpy as np
-import matplotlib.pyplot as plt
-from astropy.io import fits
-from astropy.table import Table
 import math
-from numpy import exp
-from scipy import integrate
-from scipy.integrate import quad
-import pdb
-import random
-from scipy import stats
-from scipy.optimize import curve_fit
-import scipy.optimize as opt
 import statsmodels 
-from multiprocessing import Pool
-from scipy.signal import find_peaks
-from statsmodels.graphics.tsaplots import plot_acf
-import glob
-import lightkurve as lk
-import numpy as np
-import pandas as pd
-import imageio
-from scipy.signal import argrelextrema
-
-import glob
-import lightkurve as lk
-import numpy as np
-from matplotlib import pyplot as plt
-import pandas as pd
-from astropy.timeseries import LombScargle
-from astropy.table import Table
-import imageio
-from lightkurve.correctors import RegressionCorrector
-from lightkurve.correctors import DesignMatrix
-import scipy.linalg
-from mpl_toolkits.mplot3d import Axes3D
-from tqdm import tqdm
 import os
-import gc
-import multiprocessing
+
+from scipy.signal import find_peaks, argrelextrema
+import scipy.linalg
+
+from astropy.table import Table, Column
+from astropy.timeseries import LombScargle
 
 Path_to_Save_to= '/Users/Tobin/Dropbox/TESS_project/Variability_Statistics/Test_Pipeline_Module/Variability_Metrics/'
 
