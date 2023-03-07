@@ -129,10 +129,9 @@ class TESSCutLightcurve():
         self.dm = lk.DesignMatrixCollection([pca_dm1, cbv_dm_use, spline_dm1])
 
         full_model, systematics_model, self.full_model_normalized = np.ones((3, *self.quality_tpfs.shape))
-        for i in tqdm(range(self.cutout_size)):
-            for j in range(self.cutout_size):
-                systematics_model[:, i, j],\
-                    full_model[:, i, j], self.full_model_normalized[:, i, j] = self.correct_pixel(i, j)
+        for i, j in tqdm([(i, j) for i in range(self.cutout_size) for j in range(self.cutout_size)]):
+            systematics_model[:, i, j],\
+                full_model[:, i, j], self.full_model_normalized[:, i, j] = self.correct_pixel(i, j)
 
         # Calculate Lightcurves
         # NOTE - we are also calculating a lightcurve which does not include the spline model,
