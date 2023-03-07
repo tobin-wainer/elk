@@ -9,6 +9,7 @@ import os.path
 import gc
 
 from .lightcurve import TESScutLightcurve
+from .utils import flux_to_mag, flux_err_to_mag_err
 
 
 class EnsembleLC:
@@ -385,16 +386,3 @@ class EnsembleLC:
         plt.close(fig)
 
         return fig, light_curve_table
-
-
-def flux_to_mag(flux):
-    m1 = 10
-    f1 = 15000
-    mag = 2.5 * np.log10(f1 / flux) + m1
-    return mag
-
-
-def flux_err_to_mag_err(flux, flux_err):
-    d_mag_d_flux = -2.5 / (flux * np.log(10))
-    m_err_squared = abs(d_mag_d_flux)**2 * flux_err**2
-    return np.sqrt(m_err_squared)
