@@ -194,9 +194,12 @@ class EnsembleLC:
         failed_download : `int`
             How many observations failed to download
         near_edge_or_Sector_1 : `int`
-            # TODO
+            The number of sectors where the target is located too close to the edge of a TESS detector, 
+            where we cannot accurately perform uniform background subtraction; or the custer was observed in
+            Sector 1, which has known systematics
         scattered_light : `int`
-            # TODO
+            The number of sectors with significant scattered light after the correction process. 'Significant'
+            is arbitrarily defined by a by-eye calibration, and the threshold values can be changed if needed
         lc_Lens : :class:`~numpy.ndarray`
             The length of each lightcurve
         """
