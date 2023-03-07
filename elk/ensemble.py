@@ -136,7 +136,7 @@ class EnsembleLC:
             tpfs = None
         return tpfs
 
-    def scattered_light(self, use_tpfs, full_model_Normalized):
+    def scattered_light(self, quality_tpfs, full_model_Normalized):
         if self.debug:
             return False
         # regular grid covering the domain of the data
@@ -145,9 +145,9 @@ class EnsembleLC:
         YY = Y.flatten()
 
         # Define the steps for which we test for scattered light
-        time_steps = np.arange(0, len(use_tpfs), self.scattered_light_frequency)
+        time_steps = np.arange(0, len(quality_tpfs), self.scattered_light_frequency)
         coefficients_array = np.zeros((len(time_steps), 3))
-        data_flux_values = (use_tpfs - full_model_Normalized).flux.value
+        data_flux_values = (quality_tpfs - full_model_Normalized).flux.value
 
         for i in range(len(time_steps)):
             data = data_flux_values[time_steps[i]]
@@ -237,11 +237,11 @@ class EnsembleLC:
                 self.n_near_edge += 1
                 return
 
-            print(lc.use_tpfs.shape)
+            print(lc.quality_tpfs.shape)
 
             lc.correct_lc()
 
-            scattered_light_test = self.scattered_light(lc.use_tpfs, lc.full_model_normalized)
+            scattered_light_test = self.scattered_light(lc.quality_tpfs, lc.full_model_normalized)
             if scattered_light_test & (current_try_sector + 1 < self.sectors_available):
                 print("Failed Scattered Light Test")
                 self.n_scattered_light += 1
