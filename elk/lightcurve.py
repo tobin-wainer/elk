@@ -121,44 +121,17 @@ class TESSCutLightcurve():
 
         # We can make a simple basis-spline (b-spline) model for astrophysical variability. This will be a
         # flexible, smooth model. The number of knots is important, we want to only correct for very long
-        # term variabilty that looks like systematics, so here we have 5 knots, the smaller the better
+        # term variability that looks like systematics, so here we have 5 knots, the smaller the better
         spline_dm1 = lk.designmatrix.create_spline_matrix(self.quality_tpfs.time.value, n_knots=5)
 
         # Here we create our design matrix
-        dm1 = lk.DesignMatrixCollection([pca_dm1, cbv_dm_use, spline_dm1])
+        self.dm = lk.DesignMatrixCollection([pca_dm1, cbv_dm_use, spline_dm1])
 
-        full_model, systematics_model, full_model_Normalized = np.ones((3, *self.quality_tpfs.shape))
-        for idx in tqdm(range(self.quality_tpfs.shape[1])):
-            for jdx in range(self.quality_tpfs.shape[2]):
-                pixel_lightcurve = lk.LightCurve(time=self.quality_tpfs.time.value,
-                                                 flux=self.quality_tpfs.flux.value[:, idx, jdx],
-                                                 flux_err=self.quality_tpfs.flux_err.value[:, idx, jdx])
-
-                # Adding a test to make sure there are No Flux_err's <= 0
-                pixel_lightcurve = pixel_lightcurve[pixel_lightcurve.flux_err > 0]
-
-                r1 = lk.RegressionCorrector(pixel_lightcurve)
-
-                # Correct the pixel light curve by our design matrix
-                r1.correct(dm1)
-
-                # Extract just the systematics components
-                systematics_model[:, idx, jdx] = (r1.diagnostic_lightcurves['PCA'].flux.value +
-                                                  r1.diagnostic_lightcurves['CBVs'].flux.value)
-                # Add all the components
-                full_model[:, idx, jdx] = (r1.diagnostic_lightcurves['PCA'].flux.value +
-                                           r1.diagnostic_lightcurves['CBVs'].flux.value +
-                                           r1.diagnostic_lightcurves['spline'].flux.value)
-
-                # Making so the model isn't centered around 0
-                full_model[:, idx, jdx] -= r1.diagnostic_lightcurves['spline'].flux.value.mean()
-
-                # Making Normalized Model For the Test of Scattered Light
-                full_model_Normalized[:, idx, jdx] = (r1.diagnostic_lightcurves['PCA'].flux.value +
-                                                      r1.diagnostic_lightcurves['CBVs'].flux.value +
-                                                      r1.diagnostic_lightcurves['spline'].flux.value)
-
-        self.full_model_normalized = full_model_Normalized
+        full_model, systematics_model, self.full_model_normalized = np.ones((3, *self.quality_tpfs.shape))
+        for i in tqdm(range(self.cutout_size)):
+            for j in range(self.cutout_size):
+                systematics_model[:, i, j],\
+                    full_model[:, i, j], self.full_model_normalized[:, i, j] = self.correct_pixel(i, j)
 
         # Calculate Lightcurves
         # NOTE - we are also calculating a lightcurve which does not include the spline model,
@@ -172,3 +145,29 @@ class TESSCutLightcurve():
                                                       full_corrected_lightcurve.flux.value,
                                                       full_corrected_lightcurve.flux_err.value],
                                                      names=('time', 'flux', 'flux_err'))
+
+    def correct_pixel(self, i, j):
+        # create a lightcurve for just this pixel
+        pixel_lightcurve = lk.LightCurve(time=self.quality_tpfs.time.value,
+                                         flux=self.quality_tpfs.flux.value[:, i, j],
+                                         flux_err=self.quality_tpfs.flux_err.value[:, i, j])
+
+        # Adding a test to make sure there are No Flux_err's <= 0
+        # TODO: is this necessary? (no quality_tpfs should make it through right?)
+        pixel_lightcurve = pixel_lightcurve[pixel_lightcurve.flux_err > 0]
+        r1 = lk.RegressionCorrector(pixel_lightcurve)
+
+        # correct the pixel lightcurve by our design matrix
+        r1.correct(self.dm)
+
+        # extract just the systematics components
+        systematics_model = (r1.diagnostic_lightcurves['PCA'].flux.value
+                             + r1.diagnostic_lightcurves['CBVs'].flux.value)
+
+        # normalise the model for scattered light test
+        full_model_normalized = systematics_model + r1.diagnostic_lightcurves['spline'].flux.value
+
+        # add all the components and adjust by the mean to avoid being centered around 0
+        full_model = full_model_normalized - r1.diagnostic_lightcurves['spline'].flux.value.mean()
+
+        return systematics_model, full_model, full_model_normalized
