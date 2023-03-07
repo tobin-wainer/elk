@@ -125,17 +125,16 @@ class TESSCutLightcurve():
         # MultiScale CBVs, which are at different time scales. In this case, we don't want to use the long
         # scale CBVs, because this may fit out real astrophysical variability. Instead we will use the
         # medium and short time scale CBVs.
-        # TODO: reduce these .to_lightcurve() calls
         cbvs_1 = lk.correctors.cbvcorrector.load_tess_cbvs(sector=self.quality_tpfs.sector,
                                                            camera=self.quality_tpfs.camera,
                                                            ccd=self.quality_tpfs.ccd,
                                                            cbv_type='MultiScale',
-                                                           band=2).interpolate(self.quality_tpfs.to_lightcurve())
+                                                           band=2).interpolate(self.quality_tpfs)
         cbvs_2 = lk.correctors.cbvcorrector.load_tess_cbvs(sector=self.quality_tpfs.sector,
                                                            camera=self.quality_tpfs.camera,
                                                            ccd=self.quality_tpfs.ccd,
                                                            cbv_type='MultiScale',
-                                                           band=3).interpolate(self.quality_tpfs.to_lightcurve())
+                                                           band=3).interpolate(self.quality_tpfs)
 
         cbv_dm1 = cbvs_1.to_designmatrix(cbv_indices=np.arange(1, 8))
         cbv_dm2 = cbvs_2.to_designmatrix(cbv_indices=np.arange(1, 8))
