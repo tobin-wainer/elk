@@ -537,6 +537,35 @@ class EnsembleLC:
         return fig, light_curve_table
 
 
+class TESScutLightcurve():
+    def __init__(self, lk_search_result=None, tpfs=None, cutout_size=99):
+
+        assert lk_search_result is not None or tpfs is not None, "Must supply either a search result or tpfs"
+
+        self.lk_search_results = lk_search_result
+        self._tpfs = tpfs
+        self._use_tpfs = None
+        self.cutout_size = cutout_size
+
+    @property
+    def tpfs(self):
+        if self._tpfs is None:
+            self._tpfs = self.lk_search_results.download(cutout_size=(self.cutout_size, self.cutout_size))
+        return self._tpfs
+
+    @property
+    def uncorrected_lc(self):
+        if self._uncorrected_lc is None:
+            self._uncorrected_lc = self.tpfs.to_lightcurve()
+        return self._uncorrected_lc
+
+    @property
+    def use_tpfs(self):
+        if self._use_tpfs is None:
+            self._use_tpfs = self.tpfs[np.where(self.uncorrected_lc.quality == 0)]
+        return self._use_tpfs
+
+
 def flux_to_mag(flux):
     m1 = 10
     f1 = 15000
