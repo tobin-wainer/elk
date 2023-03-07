@@ -7,7 +7,7 @@ from tqdm import tqdm
 TESS_RESOLUTION = 21 * u.arcsec / u.pixel
 
 
-class TESScutLightcurve():
+class TESSCutLightcurve():
     def __init__(self, radius, lk_search_result=None, tpfs=None, cutout_size=99, percentile=80, n_pca=6):
 
         assert lk_search_result is not None or tpfs is not None, "Must supply either a search result or tpfs"

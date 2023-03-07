@@ -8,7 +8,7 @@ import astropy.units as u
 import os.path
 import gc
 
-from .lightcurve import TESScutLightcurve
+from .lightcurve import TESSCutLightcurve
 from .utils import flux_to_mag, flux_err_to_mag_err
 
 
@@ -223,7 +223,7 @@ class EnsembleLC:
                 self.n_failed_download += 1
                 return
 
-            lc = TESScutLightcurve(tpfs=tpfs, radius=self.radius, cutout_size=self.cutout_size,
+            lc = TESSCutLightcurve(tpfs=tpfs, radius=self.radius, cutout_size=self.cutout_size,
                                    percentile=self.percentile, n_pca=self.n_pca)
 
             # Now Edge Test
