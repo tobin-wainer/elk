@@ -9,6 +9,8 @@ from tqdm import tqdm
 import os.path
 import gc
 
+from .lightcurve import TESScutLightcurve
+
 TESS_RESOLUTION = 21 * u.arcsec / u.pixel
 
 
@@ -127,24 +129,13 @@ class EnsembleLC:
         return self.sectors_available > 0
 
     def downloadable(self, ind):
-        # Using a Try statement to see if we can download the cluster data If we cannot
+        # use a Try statement to see if we can download the cluster data
         try:
-            self.tpfs = self.tess_search_results[ind].download(cutout_size=(self.cutout_size,
-                                                                            self.cutout_size))
-        # TODO: Bare Excepts are bad, should be more specific here
+            tpfs = self.tess_search_results[ind].download(cutout_size=(self.cutout_size, self.cutout_size))
         except lk.search.SearchError:
             print("No Download")
-            self.tpfs = None
-
-    def near_edge(self):
-        # Only selecting time steps that are good, or have quality == 0
-        t1 = self.tpfs[np.where(self.tpfs.to_lightcurve().quality == 0)]
-
-        min_not_nan = ~np.isnan(np.min(t1[0].flux.value))
-        # Also making sure the Sector isn't the one with the Systematic
-        not_sector_one = self.tpfs.sector != 1
-        min_flux_greater_one = np.min(t1[0].flux.value) > 1
-        return ~(min_not_nan & not_sector_one & min_flux_greater_one)
+            tpfs = None
+        return tpfs
 
     def circle_aperture(self, data, bkg):
         radius_in_pixels = (self.radius * u.deg / TESS_RESOLUTION).to(u.pixel).value
@@ -252,18 +243,20 @@ class EnsembleLC:
             print(f"Starting Quality Tests for Observation: {current_try_sector}")
 
             # First is the Download Test
-            self.downloadable(current_try_sector)
-            if (self.tpfs is None) & (current_try_sector + 1 < self.sectors_available):
+            tpfs = self.downloadable(current_try_sector)
+            if (tpfs is None) & (current_try_sector + 1 < self.sectors_available):
                 print('Failed Download')
                 self.n_failed_download += 1
                 continue
-            elif (self.tpfs is None) & (current_try_sector + 1 == self.sectors_available):
+            elif (tpfs is None) & (current_try_sector + 1 == self.sectors_available):
                 print('Failed Download')
                 self.n_failed_download += 1
                 return
 
+            lc = TESScutLightcurve(tpfs=tpfs, cutout_size=self.cutout_size)
+
             # Now Edge Test
-            near_edge = self.near_edge()
+            near_edge = lc.near_edge()
             if near_edge & (current_try_sector + 1 < self.sectors_available):
                 print('Failed Near Edge Test')
                 self.n_near_edge += 1
@@ -272,13 +265,8 @@ class EnsembleLC:
                 print('Failed Near Edge Test')
                 self.n_near_edge += 1
                 return
-            else:
-                use_tpfs = self.tpfs[np.where(self.tpfs.to_lightcurve().quality == 0)]
 
-            # Getting Rid of where the flux err < 0
-            use_tpfs = use_tpfs[use_tpfs.to_lightcurve().flux_err > 0]
-
-            print(use_tpfs.shape)
+            print(lc.use_tpfs.shape)
 
             # Define the aperture for our Cluster based on previous Vijith functions
             star_mask1 = np.empty([len(use_tpfs), self.cutout_size, self.cutout_size], dtype='bool')
@@ -535,35 +523,6 @@ class EnsembleLC:
         plt.close(fig)
 
         return fig, light_curve_table
-
-
-class TESScutLightcurve():
-    def __init__(self, lk_search_result=None, tpfs=None, cutout_size=99):
-
-        assert lk_search_result is not None or tpfs is not None, "Must supply either a search result or tpfs"
-
-        self.lk_search_results = lk_search_result
-        self._tpfs = tpfs
-        self._use_tpfs = None
-        self.cutout_size = cutout_size
-
-    @property
-    def tpfs(self):
-        if self._tpfs is None:
-            self._tpfs = self.lk_search_results.download(cutout_size=(self.cutout_size, self.cutout_size))
-        return self._tpfs
-
-    @property
-    def uncorrected_lc(self):
-        if self._uncorrected_lc is None:
-            self._uncorrected_lc = self.tpfs.to_lightcurve()
-        return self._uncorrected_lc
-
-    @property
-    def use_tpfs(self):
-        if self._use_tpfs is None:
-            self._use_tpfs = self.tpfs[np.where(self.uncorrected_lc.quality == 0)]
-        return self._use_tpfs
 
 
 def flux_to_mag(flux):
