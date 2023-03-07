@@ -121,15 +121,16 @@ class EnsembleLC:
             Whether these is at least one observation in TESS
         """
         # search for the cluster in TESS using lightkurve
-        search = lk.search_tesscut(self.callable)
-        print(f'{self.callable} has {len(search)} observations')
-        return len(search) > 0
+        self.tess_search_results = lk.search_tesscut(self.callable)
+        self.sectors_available = len(self.tess_search_results)
+        print(f'{self.callable} has {self.sectors_available} observations')
+        return self.sectors_available > 0
 
     def downloadable(self, ind):
         # Using a Try statement to see if we can download the cluster data If we cannot
         try:
-            self.tpfs = lk.search_tesscut(self.callable)[ind].download(cutout_size=(self.cutout_size,
-                                                                                    self.cutout_size))
+            self.tpfs = self.tess_search_results[ind].download(cutout_size=(self.cutout_size,
+                                                                            self.cutout_size))
         # TODO: Bare Excepts are bad, should be more specific here
         except:
             print("No Download")
@@ -238,10 +239,6 @@ class EnsembleLC:
         lc_Lens : :class:`~numpy.ndarray`
             The length of each lightcurve
         """
-        # Knowing how many observations we have to work with
-        search = lk.search_tesscut(self.callable)
-        self.sectors_available = len(search)
-
         # We are also going to document how many observations failed each one of our quality tests
         self.n_failed_download = 0
         self.n_near_edge = 0
