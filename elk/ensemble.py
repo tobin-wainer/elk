@@ -281,7 +281,7 @@ class EnsembleLC:
                 if self.output_path is not None and self.save["figures"]:
                     path = os.path.join(self.output_path, "Figures", "LCs",
                                         f'{self.callable}_Full_Corrected_LC_Observation_{current_try_sector}.png')
-                    plt.savefig(path, format='png')
+                    plt.savefig(path, format='png', bbox_inches="tight")
                 plt.close(fig)
 
                 self.lc_lens.append(len(lc.full_corrected_lightcurve_table))
