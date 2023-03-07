@@ -83,6 +83,8 @@ class EnsembleLC:
                         # create the folder
                         os.makedirs(path)
                         self.save[key] = True
+                else:
+                    self.save[key] = True
 
         self.output_path = output_path
         self.radius = radius
