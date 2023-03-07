@@ -55,8 +55,7 @@ class TESSCutLightcurve():
     @property
     def uncorrected_lc(self):
         if self._uncorrected_lc is None:
-            # TODO: why are the data and bkg the same?
-            self.star_mask, _ = self.circle_aperture(self.quality_tpfs[0].flux.value, self.quality_tpfs[0].flux.value)
+            self.star_mask = self.circle_aperture()
             self._uncorrected_lc = self.quality_tpfs.to_lightcurve(aperture_mask=self.star_mask)
         return self._uncorrected_lc
 
@@ -68,34 +67,10 @@ class TESSCutLightcurve():
         min_flux_greater_one = min_flux > 1
         return ~(min_not_nan & not_sector_one & min_flux_greater_one)
 
-    def circle_aperture(self, data, bkg):
+    def circle_aperture(self):
         radius_in_pixels = (self.radius * u.deg / TESS_RESOLUTION).to(u.pixel).value
-        data_mask = np.zeros_like(data)
-        x_len = np.shape(data_mask)[1]
-        y_len = np.shape(data_mask)[2]
-        # centers
-        cen_x = x_len//2
-        cen_y = y_len//2
-        bkg_mask = np.zeros_like(bkg)
-        bkg_cutoff = np.nanpercentile(bkg, self.percentile)
-        for i in range(x_len):
-            for j in range(y_len):
-                if (i - cen_x)**2 + (j - cen_y)**2 < (radius_in_pixels)**2:   # star mask condition
-                    data_mask[0, i, j] = 1
-
-        # TODO: not a fan of variable overwrites
-        x_len = np.shape(bkg_mask)[1]
-        y_len = np.shape(bkg_mask)[2]
-        cen_x = x_len//2
-        cen_y = y_len//2
-        for i in range(x_len):
-            for j in range(y_len):
-                if np.logical_and((i - cen_x)**2+(j - cen_y)**2 > (radius_in_pixels)**2, bkg[0, i, j] < bkg_cutoff):  # sky mask condition
-                    bkg_mask[0, i, j] = 1
-
-        star_mask = data_mask == 1
-        sky_mask = bkg_mask == 1
-        return star_mask[0], sky_mask[0]
+        pix, _ = np.meshgrid(np.arange(self.cutout_size), np.arange(self.cutout_size))
+        return (pix - self.cutout_size // 2)**2 + (pix - self.cutout_size // 2)**2 < radius_in_pixels**2
 
     def correct_lc(self):
         # Time average of the pixels in the TPF:
