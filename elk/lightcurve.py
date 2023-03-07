@@ -8,18 +8,24 @@ TESS_RESOLUTION = 21 * u.arcsec / u.pixel
 
 
 class TESScutLightcurve():
-    def __init__(self, lk_search_result=None, tpfs=None, cutout_size=99):
+    def __init__(self, radius, lk_search_result=None, tpfs=None, cutout_size=99, percentile=80, n_pca=6):
 
         assert lk_search_result is not None or tpfs is not None, "Must supply either a search result or tpfs"
 
+        # convert radius to degrees if it has units
+        if hasattr(radius, 'unit'):
+            radius = radius.to(u.deg).value
+
+        self.radius = radius
         self.lk_search_results = lk_search_result
         self._tpfs = tpfs
         self.cutout_size = cutout_size
+        self.percentile = percentile
+        self.n_pca = n_pca
 
         self._use_tpfs = None
         self._basic_lc = None
         self._uncorrected_lc = None
-
 
     @property
     def tpfs(self):
@@ -51,7 +57,7 @@ class TESScutLightcurve():
         min_flux = np.min(self.use_tpfs[0].flux.value)
         min_not_nan = ~np.isnan(min_flux)
         # Also making sure the Sector isn't the one with the Systematic
-        not_sector_one = self.tpfs.sector != 1self.
+        not_sector_one = self.tpfs.sector != 1
         min_flux_greater_one = min_flux > 1
         return ~(min_not_nan & not_sector_one & min_flux_greater_one)
 
@@ -100,16 +106,14 @@ class TESScutLightcurve():
         # We can use our background aperture to create pixel time series and then take Principal
         # Components of the data using Singular Value Decomposition. This gives us the "top" trends
         # that are present in the background data
-        pca_dm1 = lk.DesignMatrix(self.use_tpfs.flux.value[:, bkg_aper],
-                                  name='PCA').pca(self.principle_components)
+        pca_dm1 = lk.DesignMatrix(self.use_tpfs.flux.value[:, bkg_aper], name='PCA').pca(self.n_pca)
 
         # Here we are going to set the priors for the PCA to be located around the
         # flux values of the uncorrected LC
-        pca_dm1.prior_mu = np.array([np.median(self.uncorrected_lc.flux.value)
-                                     for _ in range(self.principle_components)])
+        pca_dm1.prior_mu = np.array([np.median(self.uncorrected_lc.flux.value) for _ in range(self.n_pca)])
         pca_dm1.prior_sigma = np.array([(np.percentile(self.uncorrected_lc.flux.value, 84)
                                          - np.percentile(self.uncorrected_lc.flux.value, 16))
-                                        for _ in range(self.principle_components)])
+                                        for _ in range(self.n_pca)])
 
         # The TESS mission pipeline provides co-trending basis vectors (CBVs) which capture common trends
         # in the dataset. We can use these to de-trend out pixel level data. The mission provides

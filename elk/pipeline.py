@@ -13,8 +13,7 @@ from .lightcurve import TESScutLightcurve
 
 class EnsembleLC:
     def __init__(self, radius, cluster_age, output_path="./", cluster_name=None, location=None,
-                 percentile=80, cutout_size=99, scattered_light_frequency=5,
-                 principle_components=6,
+                 percentile=80, cutout_size=99, scattered_light_frequency=5, n_pca=6,
                  debug=False):
         """Class for generating lightcurves from TESS cutouts
 
@@ -39,7 +38,7 @@ class EnsembleLC:
             How large to make the cutout, by default 99
         scattered_light_frequency : `int`, optional
             Frequency at which to check for scattered light, by default 5
-        principle_components : `int`, optional
+        n_pca : `int`, optional
             Number of principle components to use in the DesignMatrix, by default 6
         debug : `bool`, optional
             #TODO DELETE THIS, by default False
@@ -94,7 +93,7 @@ class EnsembleLC:
         self.percentile = percentile
         self.cutout_size = cutout_size
         self.scattered_light_frequency = scattered_light_frequency
-        self.principle_components = principle_components
+        self.n_pca = n_pca
         self.debug = debug
 
     def __repr__(self):
@@ -221,7 +220,8 @@ class EnsembleLC:
                 self.n_failed_download += 1
                 return
 
-            lc = TESScutLightcurve(tpfs=tpfs, cutout_size=self.cutout_size)
+            lc = TESScutLightcurve(tpfs=tpfs, radius=self.radius, cutout_size=self.cutout_size,
+                                   percentile=self.percentile, n_pca=self.n_pca)
 
             # Now Edge Test
             near_edge = lc.near_edge()
