@@ -132,7 +132,7 @@ class EnsembleLC:
             self.tpfs = self.tess_search_results[ind].download(cutout_size=(self.cutout_size,
                                                                             self.cutout_size))
         # TODO: Bare Excepts are bad, should be more specific here
-        except:
+        except lk.search.SearchError:
             print("No Download")
             self.tpfs = None
 
