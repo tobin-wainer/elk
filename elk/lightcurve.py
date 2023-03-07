@@ -25,6 +25,7 @@ class TESSCutLightcurve():
 
         self._quality_tpfs = None
         self._basic_lc = None
+        self._quality_lc = None
         self._uncorrected_lc = None
 
     @property
@@ -49,6 +50,7 @@ class TESSCutLightcurve():
     def quality_lc(self):
         if self._quality_lc is None:
             self._quality_lc = self.quality_tpfs.to_lightcurve()
+        return self._quality_lc
 
     @property
     def uncorrected_lc(self):
@@ -129,12 +131,12 @@ class TESSCutLightcurve():
                                                            camera=self.quality_tpfs.camera,
                                                            ccd=self.quality_tpfs.ccd,
                                                            cbv_type='MultiScale',
-                                                           band=2).interpolate(self.quality_tpfs)
+                                                           band=2).interpolate(self.quality_lc)
         cbvs_2 = lk.correctors.cbvcorrector.load_tess_cbvs(sector=self.quality_tpfs.sector,
                                                            camera=self.quality_tpfs.camera,
                                                            ccd=self.quality_tpfs.ccd,
                                                            cbv_type='MultiScale',
-                                                           band=3).interpolate(self.quality_tpfs)
+                                                           band=3).interpolate(self.quality_lc)
 
         cbv_dm1 = cbvs_1.to_designmatrix(cbv_indices=np.arange(1, 8))
         cbv_dm2 = cbvs_2.to_designmatrix(cbv_indices=np.arange(1, 8))
