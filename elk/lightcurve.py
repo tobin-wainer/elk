@@ -73,6 +73,7 @@ class TESSCutLightcurve():
         return (pix - self.cutout_size // 2)**2 + (pix - self.cutout_size // 2)**2 < radius_in_pixels**2
 
     def correct_lc(self):
+        # TODO: Tom wants to ask Tobin about this max_frame stuff
         # Time average of the pixels in the TPF:
         max_frame = self.quality_tpfs.flux.value.max(axis=0)
 
