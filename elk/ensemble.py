@@ -296,46 +296,45 @@ class EnsembleLC:
         """
         LC_PATH = os.path.join(self.output_path, 'Corrected_LCs/',
                                str(self.callable) + 'output_table.fits')
+        # Test to see if I have already downloaded and corrected this cluster, If I have, read in the data
+        if self.previously_downloaded():
+            output_table = Table.read(LC_PATH, hdu=1)
+            return output_table
+
         if self.has_tess_data():
-            # Test to see if I have already downloaded and corrected this cluster, If I have, read in the data
-            if self.previously_downloaded():
-                output_table = Table.read(LC_PATH, hdu=1)
+            # This section refers to the Cluster Not Previously Being Downloaded
+            # So Calling function to download and correct data
+            self.get_lcs()
+
+            # Making the Output Table
+            name___ = [self.cluster_name]
+            HTD = [True]
+            OB_use = [self.n_good_obs]
+            OB_av = [self.sectors_available]
+            OB_good = [str(self.which_sectors_good)]
+            OB_fd = [self.n_failed_download]
+            OB_ne = [self.n_near_edge]
+            OB_sl = [self.n_scattered_light]
+            OB_lens = [str((self.lc_lens))]
+
+            output_table = Table([name___, [self.location], [self.radius], [self.cluster_age], HTD, OB_av,
+                                    OB_use, OB_good, OB_fd, OB_ne, OB_sl, OB_lens],
+                                    names=('Name', 'Location', 'Radius [deg]', 'Log Age', 'Has_TESS_Data',
+                                        'Obs_Available', 'Num_Good_Obs', 'Which_Obs_Good',
+                                        'Obs_DL_Failed', 'Obs_Near_Edge_S1', 'Obs_Scattered_Light',
+                                        'Light_Curve_Lengths'))
+
+            # Writing out the data, so I never have to Download and Correct again
+            if self.output_path is not None and self.save["lcs"]:
+                output_table.write(LC_PATH)
+
+            if self.n_good_obs != 0 and self.output_path is not None and self.save["lcs"]:
+                # now I'm going to read in the lightcurves and attach them to the output table to have all data in one place
+                for i in range(output_table['Num_Good_Obs'][0]):
+                    light_curve_table = Table.read(LC_PATH.replace("output_table", ""), hdu=i + 1)
+                    light_curve_table.write(LC_PATH, append=True)
+
                 return output_table
-
-            else:
-                # This else statement refers to the Cluster Not Previously Being Downloaded
-                # So Calling function to download and correct data
-                self.get_lcs()
-
-                # Making the Output Table
-                name___ = [self.cluster_name]
-                HTD = [True]
-                OB_use = [self.n_good_obs]
-                OB_av = [self.sectors_available]
-                OB_good = [str(self.which_sectors_good)]
-                OB_fd = [self.n_failed_download]
-                OB_ne = [self.n_near_edge]
-                OB_sl = [self.n_scattered_light]
-                OB_lens = [str((self.lc_lens))]
-
-                output_table = Table([name___, [self.location], [self.radius], [self.cluster_age], HTD, OB_av,
-                                      OB_use, OB_good, OB_fd, OB_ne, OB_sl, OB_lens],
-                                     names=('Name', 'Location', 'Radius [deg]', 'Log Age', 'Has_TESS_Data',
-                                            'Obs_Available', 'Num_Good_Obs', 'Which_Obs_Good',
-                                            'Obs_DL_Failed', 'Obs_Near_Edge_S1', 'Obs_Scattered_Light',
-                                            'Light_Curve_Lengths'))
-
-                # Writing out the data, so I never have to Download and Correct again
-                if self.output_path is not None and self.save["lcs"]:
-                    output_table.write(LC_PATH)
-
-                if self.n_good_obs != 0 and self.output_path is not None and self.save["lcs"]:
-                    # now I'm going to read in the lightcurves and attach them to the output table to have all data in one place
-                    for i in range(output_table['Num_Good_Obs'][0]):
-                        light_curve_table = Table.read(LC_PATH.replace("output_table", ""), hdu=i + 1)
-                        light_curve_table.write(LC_PATH, append=True)
-
-                    return output_table
 
         else:
             # This Means that there is no TESS coverage for the Cluster (Easiest to check)
