@@ -1,5 +1,5 @@
 import astropy.units as u
-from elk.pipeline import EnsembleLC
+from elk.ensemble import EnsembleLC
 
 c = EnsembleLC(output_path="../../output",
                cluster_name='NGC 419',
@@ -10,4 +10,4 @@ c = EnsembleLC(output_path="../../output",
                debug=True)
 
 c.generate_lightcurves()
-# c.access_lightcurve(1)
+c.access_lightcurve(1)

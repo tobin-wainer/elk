@@ -4,18 +4,17 @@ import matplotlib.pyplot as plt
 import scipy
 from astropy.table import Table, Column, join, vstack
 import astropy.units as u
-from tqdm import tqdm
 
 import os.path
 import gc
 
-TESS_RESOLUTION = 21 * u.arcsec / u.pixel
+from .lightcurve import TESSCutLightcurve
+from .utils import flux_to_mag, flux_err_to_mag_err
 
 
 class EnsembleLC:
     def __init__(self, radius, cluster_age, output_path="./", cluster_name=None, location=None,
-                 percentile=80, cutout_size=99, scattered_light_frequency=5,
-                 principle_components=6,
+                 percentile=80, cutout_size=99, scattered_light_frequency=5, n_pca=6,
                  debug=False):
         """Class for generating lightcurves from TESS cutouts
 
@@ -40,7 +39,7 @@ class EnsembleLC:
             How large to make the cutout, by default 99
         scattered_light_frequency : `int`, optional
             Frequency at which to check for scattered light, by default 5
-        principle_components : `int`, optional
+        n_pca : `int`, optional
             Number of principle components to use in the DesignMatrix, by default 6
         debug : `bool`, optional
             #TODO DELETE THIS, by default False
@@ -85,6 +84,8 @@ class EnsembleLC:
                         # create the folder
                         os.makedirs(path)
                         self.save[key] = True
+                else:
+                    self.save[key] = True
 
         self.output_path = output_path
         self.radius = radius
@@ -95,7 +96,7 @@ class EnsembleLC:
         self.percentile = percentile
         self.cutout_size = cutout_size
         self.scattered_light_frequency = scattered_light_frequency
-        self.principle_components = principle_components
+        self.n_pca = n_pca
         self.debug = debug
 
     def __repr__(self):
@@ -121,60 +122,21 @@ class EnsembleLC:
             Whether these is at least one observation in TESS
         """
         # search for the cluster in TESS using lightkurve
-        search = lk.search_tesscut(self.callable)
-        print(f'{self.callable} has {len(search)} observations')
-        return len(search) > 0
+        self.tess_search_results = lk.search_tesscut(self.callable)
+        self.sectors_available = len(self.tess_search_results)
+        print(f'{self.callable} has {self.sectors_available} observations')
+        return self.sectors_available > 0
 
     def downloadable(self, ind):
-        # Using a Try statement to see if we can download the cluster data If we cannot
+        # use a Try statement to see if we can download the cluster data
         try:
-            self.tpfs = lk.search_tesscut(self.callable)[ind].download(cutout_size=(self.cutout_size,
-                                                                                    self.cutout_size))
-        # TODO: Bare Excepts are bad, should be more specific here
-        except:
+            tpfs = self.tess_search_results[ind].download(cutout_size=(self.cutout_size, self.cutout_size))
+        except lk.search.SearchError:
             print("No Download")
-            self.tpfs = None
+            tpfs = None
+        return tpfs
 
-    def near_edge(self):
-        # Only selecting time steps that are good, or have quality == 0
-        t1 = self.tpfs[np.where(self.tpfs.to_lightcurve().quality == 0)]
-
-        min_not_nan = ~np.isnan(np.min(t1[0].flux.value))
-        # Also making sure the Sector isn't the one with the Systematic
-        not_sector_one = self.tpfs.sector != 1
-        min_flux_greater_one = np.min(t1[0].flux.value) > 1
-        return ~(min_not_nan & not_sector_one & min_flux_greater_one)
-
-    def circle_aperture(self, data, bkg):
-        radius_in_pixels = (self.radius * u.deg / TESS_RESOLUTION).to(u.pixel).value
-        data_mask = np.zeros_like(data)
-        x_len = np.shape(data_mask)[1]
-        y_len = np.shape(data_mask)[2]
-        # centers
-        cen_x = x_len//2
-        cen_y = y_len//2
-        bkg_mask = np.zeros_like(bkg)
-        bkg_cutoff = np.nanpercentile(bkg, self.percentile)
-        for i in range(x_len):
-            for j in range(y_len):
-                if (i - cen_x)**2 + (j - cen_y)**2 < (radius_in_pixels)**2:   # star mask condition
-                    data_mask[0, i, j] = 1
-
-        # TODO: not a fan of variable overwrites
-        x_len = np.shape(bkg_mask)[1]
-        y_len = np.shape(bkg_mask)[2]
-        cen_x = x_len//2
-        cen_y = y_len//2
-        for i in range(x_len):
-            for j in range(y_len):
-                if np.logical_and((i - cen_x)**2+(j - cen_y)**2 > (radius_in_pixels)**2, bkg[0, i, j] < bkg_cutoff):  # sky mask condition
-                    bkg_mask[0, i, j] = 1
-
-        star_mask = data_mask == 1
-        sky_mask = bkg_mask == 1
-        return star_mask, sky_mask
-
-    def scattered_light(self, use_tpfs, full_model_Normalized):
+    def scattered_light(self, quality_tpfs, full_model_Normalized):
         if self.debug:
             return False
         # regular grid covering the domain of the data
@@ -183,9 +145,9 @@ class EnsembleLC:
         YY = Y.flatten()
 
         # Define the steps for which we test for scattered light
-        time_steps = np.arange(0, len(use_tpfs), self.scattered_light_frequency)
+        time_steps = np.arange(0, len(quality_tpfs), self.scattered_light_frequency)
         coefficients_array = np.zeros((len(time_steps), 3))
-        data_flux_values = (use_tpfs - full_model_Normalized).flux.value
+        data_flux_values = (quality_tpfs - full_model_Normalized).flux.value
 
         for i in range(len(time_steps)):
             data = data_flux_values[time_steps[i]]
@@ -238,10 +200,6 @@ class EnsembleLC:
         lc_Lens : :class:`~numpy.ndarray`
             The length of each lightcurve
         """
-        # Knowing how many observations we have to work with
-        search = lk.search_tesscut(self.callable)
-        self.sectors_available = len(search)
-
         # We are also going to document how many observations failed each one of our quality tests
         self.n_failed_download = 0
         self.n_near_edge = 0
@@ -255,18 +213,21 @@ class EnsembleLC:
             print(f"Starting Quality Tests for Observation: {current_try_sector}")
 
             # First is the Download Test
-            self.downloadable(current_try_sector)
-            if (self.tpfs is None) & (current_try_sector + 1 < self.sectors_available):
+            tpfs = self.downloadable(current_try_sector)
+            if (tpfs is None) & (current_try_sector + 1 < self.sectors_available):
                 print('Failed Download')
                 self.n_failed_download += 1
                 continue
-            elif (self.tpfs is None) & (current_try_sector + 1 == self.sectors_available):
+            elif (tpfs is None) & (current_try_sector + 1 == self.sectors_available):
                 print('Failed Download')
                 self.n_failed_download += 1
                 return
 
+            lc = TESSCutLightcurve(tpfs=tpfs, radius=self.radius, cutout_size=self.cutout_size,
+                                   percentile=self.percentile, n_pca=self.n_pca)
+
             # Now Edge Test
-            near_edge = self.near_edge()
+            near_edge = lc.near_edge()
             if near_edge & (current_try_sector + 1 < self.sectors_available):
                 print('Failed Near Edge Test')
                 self.n_near_edge += 1
@@ -275,131 +236,17 @@ class EnsembleLC:
                 print('Failed Near Edge Test')
                 self.n_near_edge += 1
                 return
-            else:
-                use_tpfs = self.tpfs[np.where(self.tpfs.to_lightcurve().quality == 0)]
 
-            # Getting Rid of where the flux err < 0
-            use_tpfs = use_tpfs[use_tpfs.to_lightcurve().flux_err > 0]
+            print(lc.quality_tpfs.shape)
 
-            print(use_tpfs.shape)
+            lc.correct_lc()
 
-            # Define the aperture for our Cluster based on previous Vijith functions
-            star_mask1 = np.empty([len(use_tpfs), self.cutout_size, self.cutout_size], dtype='bool')
-            sky_mask1 = np.empty([len(use_tpfs), self.cutout_size, self.cutout_size], dtype='bool')
-
-            star_mask1[0], sky_mask1[0] = self.circle_aperture(use_tpfs[0].flux.value, use_tpfs[0].flux.value)
-
-            keep_mask = star_mask1[0]
-
-            # Now we will begin to correct the lightcurve
-            uncorrected_lc = use_tpfs.to_lightcurve(aperture_mask=keep_mask)
-
-            # Time average of the pixels in the TPF:
-            max_frame = use_tpfs.flux.value.max(axis=0)
-
-            # This renormalizes any columns which are bright because of straps on the detector
-            max_frame -= np.median(max_frame, axis=0)
-
-            # This aperture is any "faint" pixels:
-            bkg_aper = max_frame < np.percentile(max_frame, self.percentile)
-
-            # The average light curve of the faint pixels is a good estimate of the scattered light
-            scattered_light = use_tpfs.flux.value[:, bkg_aper].mean(axis=1)
-
-            # We can use our background aperture to create pixel time series and then take Principal
-            # Components of the data using Singular Value Decomposition. This gives us the "top" trends
-            # that are present in the background data
-            pca_dm1 = lk.DesignMatrix(use_tpfs.flux.value[:, bkg_aper],
-                                      name='PCA').pca(self.principle_components)
-
-            # Here we are going to set the priors for the PCA to be located around the
-            # flux values of the uncorrected LC
-            pca_dm1.prior_mu = np.array([np.median(uncorrected_lc.flux.value)
-                                         for _ in range(self.principle_components)])
-            pca_dm1.prior_sigma = np.array([(np.percentile(uncorrected_lc.flux.value, 84)
-                                             - np.percentile(uncorrected_lc.flux.value, 16))
-                                            for _ in range(self.principle_components)])
-
-            # The TESS mission pipeline provides co-trending basis vectors (CBVs) which capture common trends
-            # in the dataset. We can use these to de-trend out pixel level data. The mission provides
-            # MultiScale CBVs, which are at different time scales. In this case, we don't want to use the long
-            # scale CBVs, because this may fit out real astrophysical variability. Instead we will use the
-            # medium and short time scale CBVs.
-            cbvs_1 = lk.correctors.cbvcorrector.load_tess_cbvs(sector=use_tpfs.sector,
-                                                               camera=use_tpfs.camera,
-                                                               ccd=use_tpfs.ccd,
-                                                               cbv_type='MultiScale',
-                                                               band=2).interpolate(use_tpfs.to_lightcurve())
-            cbvs_2 = lk.correctors.cbvcorrector.load_tess_cbvs(sector=use_tpfs.sector,
-                                                               camera=use_tpfs.camera,
-                                                               ccd=use_tpfs.ccd,
-                                                               cbv_type='MultiScale',
-                                                               band=3).interpolate(use_tpfs.to_lightcurve())
-
-            cbv_dm1 = cbvs_1.to_designmatrix(cbv_indices=np.arange(1, 8))
-            cbv_dm2 = cbvs_2.to_designmatrix(cbv_indices=np.arange(1, 8))
-
-            # This combines the different timescale CBVs into a single `designmatrix` object
-            cbv_dm_use = lk.DesignMatrixCollection([cbv_dm1, cbv_dm2]).to_designmatrix()
-
-            # We can make a simple basis-spline (b-spline) model for astrophysical variability. This will be a
-            # flexible, smooth model. The number of knots is important, we want to only correct for very long
-            # term variabilty that looks like systematics, so here we have 5 knots, the smaller the better
-            spline_dm1 = lk.designmatrix.create_spline_matrix(use_tpfs.time.value, n_knots=5)
-
-            # Here we create our design matrix
-            dm1 = lk.DesignMatrixCollection([pca_dm1, cbv_dm_use, spline_dm1])
-
-            full_model, systematics_model, full_model_Normalized = np.ones((3, *use_tpfs.shape))
-            for idx in tqdm(range(use_tpfs.shape[1])):
-                for jdx in range(use_tpfs.shape[2]):
-                    pixel_lightcurve = lk.LightCurve(time=use_tpfs.time.value,
-                                                     flux=use_tpfs.flux.value[:, idx, jdx],
-                                                     flux_err=use_tpfs.flux_err.value[:, idx, jdx])
-
-                    # Adding a test to make sure there are No Flux_err's <= 0
-                    pixel_lightcurve = pixel_lightcurve[pixel_lightcurve.flux_err > 0]
-
-                    r1 = lk.RegressionCorrector(pixel_lightcurve)
-
-                    # Correct the pixel light curve by our design matrix
-                    r1.correct(dm1)
-
-                    # Extract just the systematics components
-                    systematics_model[:, idx, jdx] = (r1.diagnostic_lightcurves['PCA'].flux.value +
-                                                      r1.diagnostic_lightcurves['CBVs'].flux.value)
-                    # Add all the components
-                    full_model[:, idx, jdx] = (r1.diagnostic_lightcurves['PCA'].flux.value +
-                                               r1.diagnostic_lightcurves['CBVs'].flux.value +
-                                               r1.diagnostic_lightcurves['spline'].flux.value)
-
-                    # Making so the model isn't centered around 0
-                    full_model[:, idx, jdx] -= r1.diagnostic_lightcurves['spline'].flux.value.mean()
-
-                    # Making Normalized Model For the Test of Scattered Light
-                    full_model_Normalized[:, idx, jdx] = (r1.diagnostic_lightcurves['PCA'].flux.value +
-                                                          r1.diagnostic_lightcurves['CBVs'].flux.value +
-                                                          r1.diagnostic_lightcurves['spline'].flux.value)
-
-            # Calculate Lightcurves
-            # NOTE - we are also calculating a lightcurve which does not include the spline model,
-            # this is the systematics_model_corrected_lightcurve1
-            scattered_light_model_correected_lightcurve=(use_tpfs - scattered_light[:, None, None]).to_lightcurve(aperture_mask=keep_mask)
-            systematics_model_corrected_lightcurve=(use_tpfs - systematics_model).to_lightcurve(aperture_mask=keep_mask)
-            full_corrected_lightcurve = (use_tpfs - full_model).to_lightcurve(aperture_mask=keep_mask)
-
-            full_corrected_lightcurve_table = Table([full_corrected_lightcurve.time.value,
-                                                     full_corrected_lightcurve.flux.value,
-                                                     full_corrected_lightcurve.flux_err.value],
-                                                    names=('time', 'flux', 'flux_err'))
-
-            scattered_light_test = self.scattered_light(use_tpfs, full_model_Normalized)
-            # TODO: Conditions might be off here?
-            if scattered_light_test:
+            scattered_light_test = self.scattered_light(lc.quality_tpfs, lc.full_model_normalized)
+            if scattered_light_test & (current_try_sector + 1 < self.sectors_available):
                 print("Failed Scattered Light Test")
                 self.n_scattered_light += 1
                 continue
-            if scattered_light_test & (current_try_sector + 1 < self.sectors_available):
+            if scattered_light_test & (current_try_sector + 1 == self.sectors_available):
                 print("Failed Scattered Light Test")
                 self.n_scattered_light += 1
                 return
@@ -410,34 +257,34 @@ class EnsembleLC:
                 # This Else Statement means that the Lightcurve is good and has passed our quality checks
 
                 # Writing out the data, so I never have to Download and Correct again, but only if there is data
-                full_corrected_lightcurve_table.add_column(Column(flux_to_mag(full_corrected_lightcurve_table['flux'])), name='mag')
-                full_corrected_lightcurve_table.add_column(Column(flux_err_to_mag_err(full_corrected_lightcurve_table['flux'], full_corrected_lightcurve_table['flux_err'])), name='mag_err')
+                lc.full_corrected_lightcurve_table.add_column(Column(flux_to_mag(lc.full_corrected_lightcurve_table['flux'])), name='mag')
+                lc.full_corrected_lightcurve_table.add_column(Column(flux_err_to_mag_err(lc.full_corrected_lightcurve_table['flux'], lc.full_corrected_lightcurve_table['flux_err'])), name='mag_err')
 
                 if self.output_path is not None and self.save["lcs"]:
-                    full_corrected_lightcurve_table.write(os.path.join(self.output_path,
-                                                                    "Corrected_LCs",
-                                                                    self.callable + ".fits"),
-                                                        format='fits', append=True)
+                    lc.full_corrected_lightcurve_table.write(os.path.join(self.output_path,
+                                                                          "Corrected_LCs",
+                                                                          self.callable + ".fits"),
+                                                             format='fits', append=True)
 
                 # Now I am going to save a plot of the light curve to go visually inspect later
-                range_ = max(full_corrected_lightcurve_table['flux']) - min(full_corrected_lightcurve_table['flux'])
+                range_ = max(lc.full_corrected_lightcurve_table['flux']) - min(lc.full_corrected_lightcurve_table['flux'])
                 fig = plt.figure()
                 plt.title(f'Observation: {current_try_sector}')
-                plt.plot(full_corrected_lightcurve_table['time'], full_corrected_lightcurve_table['flux'],
+                plt.plot(lc.full_corrected_lightcurve_table['time'], lc.full_corrected_lightcurve_table['flux'],
                          color='k', linewidth=.5)
                 plt.xlabel('Delta Time [Days]')
                 plt.ylabel('Flux [e/s]')
-                plt.text(full_corrected_lightcurve_table['time'][0],
-                         (max(full_corrected_lightcurve_table['flux'])-(range_*0.05)),
+                plt.text(lc.full_corrected_lightcurve_table['time'][0],
+                         (max(lc.full_corrected_lightcurve_table['flux'])-(range_*0.05)),
                          self.callable, fontsize=14)
 
                 if self.output_path is not None and self.save["figures"]:
                     path = os.path.join(self.output_path, "Figures", "LCs",
                                         f'{self.callable}_Full_Corrected_LC_Observation_{current_try_sector}.png')
-                plt.savefig(path, format='png')
+                    plt.savefig(path, format='png')
                 plt.close(fig)
 
-                self.lc_lens.append(len(full_corrected_lightcurve_table))
+                self.lc_lens.append(len(lc.full_corrected_lightcurve_table))
 
     def generate_lightcurves(self):
         """Generate lightcurve files for the cluster and save them in `self.output_path`
@@ -539,16 +386,3 @@ class EnsembleLC:
         plt.close(fig)
 
         return fig, light_curve_table
-
-
-def flux_to_mag(flux):
-    m1 = 10
-    f1 = 15000
-    mag = 2.5 * np.log10(f1 / flux) + m1
-    return mag
-
-
-def flux_err_to_mag_err(flux, flux_err):
-    d_mag_d_flux = -2.5 / (flux * np.log(10))
-    m_err_squared = abs(d_mag_d_flux)**2 * flux_err**2
-    return np.sqrt(m_err_squared)
