@@ -29,30 +29,16 @@ def Read_in_Lightcurve(Cluster_name):
 
 
 def get_rms(flux):
-    # Root Mean Squared
-    flux_l = list(flux)
-    squared_fluxes = []
-    for i in range(len(flux_l)):
-        squared_fluxes.append((flux_l[i]**2))
-    mean = (np.sum(squared_fluxes)/len(squared_fluxes))
-    root = np.sqrt(mean)
-    return root
+    return np.sqrt(np.mean(np.square(flux)))
 
 
 def get_std(flux):
     # Standard Deviation
-    sd = np.std(flux)
-    return sd
+    return np.std(flux)
 
 
 def get_MAD(flux):
-    # Median Absolute Deviation
-    flux_l = list(flux)
-    median = np.median(flux_l)
-    deviation = abs(flux_l - median)
-    sum_deviation = np.sum(deviation)
-    med_of_devs = np.median(deviation)
-    return med_of_devs
+    return np.median(np.abs(flux - np.median(flux)))
 
 
 def get_range(flux, bottom_percentile, upper_percentile):
@@ -72,17 +58,9 @@ def skewness(flux):
     return scipy.stats.moment(flux, moment=3)
 
 
-def Von_Neumann_Ratio(flux):
-    num = []
-    denom = []
-    for i in range(len(flux) - 1):
-        num.append((flux[i + 1] - flux[i])**2/(len(flux)-1))
-    for i in range(len(flux)):
-        denom = np.sum((flux[i] - np.mean(flux))**2 / (len(flux) - 1))
-
-    num_ = np.sum(num)
-    denom_ = np.sum(denom)
-    nu = num_ / denom_
+def von_neumann_ratio(flux):
+    # https://www.jstor.org/stable/2235951
+    nu = np.sum(np.ediff1d(flux)**2) / np.var(flux)
     return 1 / nu
 
 
@@ -145,7 +123,7 @@ def get_LSP(light_curve, Cluster_name, print_figs, save_figs):
         # Bootstrap resampling incorporating the flux error to get a confidence interval about the LSP
         def thousand_trials(light_curve):
             list_t = [trial(light_curve) for i in range(1000)]
-            
+
             omega = np.arange(0.04, 11, 0.001)
 
             power_array = np.zeros((len(list_t), len(omega)))
