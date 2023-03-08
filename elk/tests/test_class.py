@@ -9,5 +9,5 @@ c = EnsembleLC(output_path="../../output",
                cutout_size=10,
                debug=True)
 
-c.generate_lightcurves()
+c.lightcurves_summary_file()
 c.access_lightcurve(1)

@@ -289,8 +289,8 @@ class EnsembleLC:
 
                 self.lc_lens.append(len(lc.full_corrected_lightcurve_table))
 
-    def generate_lightcurves(self):
-        """Generate lightcurve files for the cluster and save them in `self.output_path`
+    def lightcurves_summary_file(self):
+        """Generate lightcurve output files for the cluster and save them in `self.output_path`
 
         Returns
         -------
@@ -361,7 +361,22 @@ class EnsembleLC:
                 output_table.write(LC_PATH, overwrite=True)
             return output_table
 
-    def access_lightcurve(self, sector):
+    def access_lightcurve(self, observation):
+        """Function to access downloaded and corrected sector lightcurved 
+
+        Parameters
+        ----------
+        observation : 'int'
+            This is the number of the observation you wish to access the lightcurve for. 
+            For example, if there were 4 observations available and 3 good observations, and you wish to 
+            access the 2nd good observation, you would set observation to 2.
+
+        Returns
+        -------
+        figure, table
+            This will return a figure of the lightcurve for the given observation, as well as the light curve
+            in table form.
+        """
         path = os.path.join(self.output_path, 'Corrected_LCs', self.callable + 'output_table.fits')
         if not os.path.exists(path):
             print("The Lightcurve has not been downloaded and corrected. Please run 'Generate_Lightcurves()' function for this cluster.")
@@ -372,12 +387,12 @@ class EnsembleLC:
         if output_table['Num_Good_Obs'] == 1:
             light_curve_table = Table.read(path, hdu=2)
         else:
-            light_curve_table = Table.read(path, hdu=(int(sector)+2))
+            light_curve_table = Table.read(path, hdu=(int(observation)+2))
 
         # Now I am going to save a plot of the light curve to go visually inspect later
         range_ = max(light_curve_table['flux']) - min(light_curve_table['flux'])
         fig = plt.figure()
-        plt.title(f'Observation: {sector}')
+        plt.title(f'Observation: {observation}')
         plt.plot(light_curve_table['time'], light_curve_table['flux'], color='k', linewidth=.5)
         plt.xlabel('Delta Time [Days]')
         plt.ylabel('Flux [e/s]')
