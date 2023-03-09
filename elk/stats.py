@@ -64,40 +64,30 @@ def von_neumann_ratio(flux):
     return 1 / nu
 
 
-def get_J_Stetson_Stat(light_curve):
-    # convert to mag
-    mags = light_curve['mag']
-    mags_err = light_curve['mag_err']
+def J_stetson(time, mag, mag_err):
+    # get the difference in time between observations
+    delta_times = np.concatenate((np.ediff1d(time), [1]))
 
-    delta_times = []
-    for i in range(len(light_curve) - 1):
-        delta_times.append(light_curve['time'][i + 1] - light_curve['time'][i])
-    delta_times.append(1)
+    # calculate the delta for each observation
+    n = len(time)
+    delta = (np.sqrt(n / (n - 1)) * ((mag - np.mean(mag)) / mag_err))
 
-    light_curve.add_column(Column(delta_times), name=('Delta_Time'), index=4)
-    mean_mag = np.mean(mags)
-    n = len(light_curve)
-    delta = np.array(sqrt(n / (n - 1)) * ((mags - mean_mag) / mags_err))
+    # start the P and weights
+    P = np.empty(len(delta_times))
+    w = np.ones(len(delta_times))
 
-    P = []
-    w = []
-    for i in range(len(light_curve)):
-        if light_curve['Delta_Time'][i] < .021:
-            P.append(delta[i] * delta[i + 1])
-            w.append(1)
-        else:
-            P.append(delta[i]**2 - 1)
-            w.append(0.25)
+    # mask for which observations are part of a pair (0.021 day=~30min)
+    # TODO: This should probably be an input and use astropy.units
+    pairs = delta_times < 0.021
+    inds = np.argwhere(pairs).flatten()
 
-    sign = []
-    for i in range(len(P)):
-        sign.append(math.copysign(1, P[i]))
+    # calculate P and w
+    P[inds] = delta[inds] * delta[inds]
+    P[~pairs] = delta[~pairs]**2 - 1
+    w[~pairs] = 0.25
 
-    individual_J = []
-    for i in range(len(P)):
-        individual_J.append(w[i] * sign[i] * sqrt(abs(P[i])))
-
-    J = np.sum(individual_J) / np.sum(w)
+    # combine into the J stetson stat
+    J = np.sum(w * np.sign(P) * np.sqrt(np.abs(P))) / np.sum(w)
     return J
 
 
