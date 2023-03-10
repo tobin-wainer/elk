@@ -14,7 +14,7 @@ from .utils import flux_to_mag, flux_err_to_mag_err
 
 class EnsembleLC:
     def __init__(self, radius, cluster_age, output_path="./", cluster_name=None, location=None,
-                 percentile=80, cutout_size=99, scattered_light_frequency=5, n_pca=6,
+                 percentile=80, cutout_size=99, scattered_light_frequency=5, n_pca=6, verbose=False,
                  debug=False):
         """Class for generating lightcurves from TESS cutouts
 
@@ -41,6 +41,8 @@ class EnsembleLC:
             Frequency at which to check for scattered light, by default 5
         n_pca : `int`, optional
             Number of principle components to use in the DesignMatrix, by default 6
+        verbose : `bool`, optional
+            Whether to print out information and progress bars, by default False
         debug : `bool`, optional
             #TODO DELETE THIS, by default False
         """
@@ -97,6 +99,7 @@ class EnsembleLC:
         self.cutout_size = cutout_size
         self.scattered_light_frequency = scattered_light_frequency
         self.n_pca = n_pca
+        self.verbose = verbose
         self.debug = debug
 
     def __repr__(self):
@@ -124,7 +127,8 @@ class EnsembleLC:
         # search for the cluster in TESS using lightkurve
         self.tess_search_results = lk.search_tesscut(self.callable)
         self.sectors_available = len(self.tess_search_results)
-        print(f'{self.callable} has {self.sectors_available} observations')
+        if self.verbose:
+            print(f'{self.callable} has {self.sectors_available} observations')
         return self.sectors_available > 0
 
     def downloadable(self, ind):
@@ -132,7 +136,6 @@ class EnsembleLC:
         try:
             tpfs = self.tess_search_results[ind].download(cutout_size=(self.cutout_size, self.cutout_size))
         except lk.search.SearchError:
-            print("No Download")
             tpfs = None
         return tpfs
 
@@ -176,8 +179,6 @@ class EnsembleLC:
         del coefficients_array
         gc.collect() #This is a command which will delete stray arguments to save memory
 
-        print(mzc, mxc, myc)
-
         return (mzc > 2.5) | ((mxc > 0.02) & (myc > 0.02))
 
     def get_lcs(self):
@@ -213,48 +214,54 @@ class EnsembleLC:
 
         # start iterating through the observations
         for current_try_sector in range(self.sectors_available):
-            print(f"Starting Quality Tests for Observation: {current_try_sector}")
+            if self.verbose:
+                print(f"Starting Quality Tests for Observation: {current_try_sector}")
 
             # First is the Download Test
             tpfs = self.downloadable(current_try_sector)
             if (tpfs is None) & (current_try_sector + 1 < self.sectors_available):
-                print('Failed Download')
+                if self.verbose:
+                    print('Failed Download')
                 self.n_failed_download += 1
                 continue
             elif (tpfs is None) & (current_try_sector + 1 == self.sectors_available):
-                print('Failed Download')
+                if self.verbose:
+                    print('Failed Download')
                 self.n_failed_download += 1
                 return
 
             lc = TESSCutLightcurve(tpfs=tpfs, radius=self.radius, cutout_size=self.cutout_size,
-                                   percentile=self.percentile, n_pca=self.n_pca)
+                                   percentile=self.percentile, n_pca=self.n_pca, progress_bar=self.verbose)
 
             # Now Edge Test
             near_edge = lc.near_edge()
             if near_edge & (current_try_sector + 1 < self.sectors_available):
-                print('Failed Near Edge Test')
+                if self.verbose:
+                    print('Failed Near Edge Test')
                 self.n_near_edge += 1
                 continue
             if near_edge & (current_try_sector + 1 == self.sectors_available):
-                print('Failed Near Edge Test')
+                if self.verbose:
+                    print('Failed Near Edge Test')
                 self.n_near_edge += 1
                 return
-
-            print(lc.quality_tpfs.shape)
 
             lc.correct_lc()
 
             scattered_light_test = self.scattered_light(lc.quality_tpfs, lc.full_model_normalized)
             if scattered_light_test & (current_try_sector + 1 < self.sectors_available):
-                print("Failed Scattered Light Test")
+                if self.verbose:
+                    print("Failed Scattered Light Test")
                 self.n_scattered_light += 1
                 continue
             if scattered_light_test & (current_try_sector + 1 == self.sectors_available):
-                print("Failed Scattered Light Test")
+                if self.verbose:
+                    print("Failed Scattered Light Test")
                 self.n_scattered_light += 1
                 return
             else:
-                print(current_try_sector, "Passed Quality Tests")
+                if self.verbose:
+                    print(current_try_sector, "Passed Quality Tests")
                 self.n_good_obs += 1
                 self.which_sectors_good.append(current_try_sector)
                 # This Else Statement means that the Lightcurve is good and has passed our quality checks
@@ -379,7 +386,8 @@ class EnsembleLC:
         """
         path = os.path.join(self.output_path, 'Corrected_LCs', self.callable + 'output_table.fits')
         if not os.path.exists(path):
-            print("The Lightcurve has not been downloaded and corrected. Please run 'Generate_Lightcurves()' function for this cluster.")
+            print(("WARNING: The Lightcurve has not been downloaded/corrected. "
+                   "Please run 'lightcurves_summary_file()' function for this cluster."))
             return None, None
         output_table = Table.read(path, hdu=1)
 

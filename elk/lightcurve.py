@@ -8,7 +8,8 @@ TESS_RESOLUTION = 21 * u.arcsec / u.pixel
 
 
 class TESSCutLightcurve():
-    def __init__(self, radius, lk_search_result=None, tpfs=None, cutout_size=99, percentile=80, n_pca=6):
+    def __init__(self, radius, lk_search_result=None, tpfs=None,
+                 cutout_size=99, percentile=80, n_pca=6, progress_bar=False):
 
         assert lk_search_result is not None or tpfs is not None, "Must supply either a search result or tpfs"
 
@@ -22,6 +23,7 @@ class TESSCutLightcurve():
         self.cutout_size = cutout_size
         self.percentile = percentile
         self.n_pca = n_pca
+        self.progress_bar = progress_bar
 
         self._quality_tpfs = None
         self._basic_lc = None
@@ -129,9 +131,14 @@ class TESSCutLightcurve():
         self.dm = lk.DesignMatrixCollection([pca_dm1, cbv_dm_use, spline_dm1])
 
         full_model, systematics_model, self.full_model_normalized = np.ones((3, *self.quality_tpfs.shape))
-        for i, j in tqdm([(i, j) for i in range(self.cutout_size) for j in range(self.cutout_size)]):
-            systematics_model[:, i, j],\
-                full_model[:, i, j], self.full_model_normalized[:, i, j] = self.correct_pixel(i, j)
+        if self.progress_bar:
+            for i, j in tqdm([(i, j) for i in range(self.cutout_size) for j in range(self.cutout_size)]):
+                systematics_model[:, i, j],\
+                    full_model[:, i, j], self.full_model_normalized[:, i, j] = self.correct_pixel(i, j)
+        else:
+            for i, j in [(i, j) for i in range(self.cutout_size) for j in range(self.cutout_size)]:
+                systematics_model[:, i, j],\
+                    full_model[:, i, j], self.full_model_normalized[:, i, j] = self.correct_pixel(i, j)
 
         # Calculate Lightcurves
         # NOTE - we are also calculating a lightcurve which does not include the spline model,
