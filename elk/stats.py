@@ -1,8 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy
-from math import sqrt
-import math
 import statsmodels 
 import os
 
@@ -91,110 +89,47 @@ def J_stetson(time, mag, mag_err):
     return J
 
 
-def get_LSP(light_curve, Cluster_name, print_figs, save_figs):
+def periodogram(time, flux, flux_err, frequencies, n_bootstrap=1000, max_peaks=25, freq_thresh=5):
+    flux_samples = np.transpose([np.repeat(flux[i], n_bootstrap)
+                                 + np.random.normal(loc=0,
+                                                    scale=flux_err[i],
+                                                    size=n_bootstrap) for i in range(len(flux))])
+    powers = np.asarray([LombScargle(time, flux_samples[i], dy=flux_err).power(frequencies)
+                         for i in range(len(flux_samples))])
 
-    def MonteCarlo_LSP(light_curve):
+    percentiles = np.percentile(powers, [50, 2.27, 15.89, 84.1, 97.725], axis=0)
+    med, _, one_below, _, _ = percentiles
 
-        def trial(light_curve):
-            t = list(light_curve['time'])
-            dy = light_curve['flux_err']
+    peak_threshold = np.mean(med) + 2 * np.std(med)
+    peak_inds, peak_info = find_peaks(one_below, height=peak_threshold)
 
-            new_f_val = []
-            for i in range(len(light_curve)):
-                spread = np.random.normal(0, light_curve['flux_err'][i])
-                new_f_val.append(light_curve['flux'][i] + spread)
+    # 5 Days is around the middle of our time scale, and represents a threshold of how different stars vary (McQuillan et al. 2012)
+    # So we want to calculate how much of our power is coming from time scales shorter/longer than 5 days
+    low_freq = frequencies > freq_thresh
+    ratio_of_power_at_high_v_low_freq = np.mean(med[~low_freq]) / np.mean(med[low_freq])
 
-            omega = np.arange(0.04, 11, 0.001)
-            P_LS = LombScargle(t, new_f_val, dy=dy).power(omega)
+    # if no limit on the peaks then save all of them, otherwise truncate to ensure identical list length
+    n_peaks = len(peak_inds)
+    max_peaks = n_peaks if max_peaks is None else max_peaks
 
-            t = Table([omega, P_LS], names=('Frequency', 'Power'))
-            return t
+    peak_freqs, power_at_peaks = np.zeros(max_peaks), np.zeros(max_peaks)
 
-        # Bootstrap resampling incorporating the flux error to get a confidence interval about the LSP
-        def thousand_trials(light_curve):
-            list_t = [trial(light_curve) for i in range(1000)]
+    peak_freqs[:min(n_peaks, max_peaks)] = frequencies[peak_inds][:max_peaks]
+    power_at_peaks[:min(n_peaks, max_peaks)] = peak_info['peak_heights'][:max_peaks]
 
-            omega = np.arange(0.04, 11, 0.001)
+    max_power = max(med)
+    freq_at_max_power = frequencies[med == max_power][0]
 
-            power_array = np.zeros((len(list_t), len(omega)))
-            for i in range(len(list_t)):
-                for j in range(len(omega)):
-                    power_array[i][j] = list_t[i]['Power'][j]
+    lsp_stats = {
+        "max_power": max_power,
+        "freq_at_max_power": freq_at_max_power,
+        "peak_freqs": peak_freqs,
+        "power_at_peaks": power_at_peaks,
+        "n_peaks": n_peaks,
+        "ratio_of_power_at_high_v_low_freq": ratio_of_power_at_high_v_low_freq
+    }
 
-            med = np.median(power_array, axis=0)
-            p16 = np.percentile(power_array, 16, axis=0)
-            p84 = np.percentile(power_array, 84, axis=0)
-
-            table = Table([omega, p16, med, p84], names=('Frequency', 'Power_16','Power_50', 'Power_84'))
-
-            return table
-
-        # Perform a Bootstrap like Monte Carlo experiment to get confidence interval
-        mc_table = thousand_trials(light_curve)
-
-        mean = np.mean(mc_table['Power_50'])
-        two_sigma = 2*np.std(mc_table['Power_50'])
-
-        # Arbitrary definition as to what we are calling a significant peak in the LSP
-        thresh = mean + two_sigma
-        peak_ind, pap = find_peaks(mc_table['Power_16'], height=float(thresh)) #Finding the Peaks 
-
-        fig = plt.figure()
-        plt.title("LS Periodigram"+str(Cluster_name))
-        plt.plot(mc_table['Frequency'], mc_table['Power_16'], linestyle='--', color='k', linewidth=.5)
-        plt.plot(mc_table['Frequency'], mc_table['Power_84'], linestyle='--', color='k', linewidth=.5)
-        plt.fill_between(mc_table['Frequency'],  mc_table['Power_16'],  mc_table['Power_84'], color='grey', label='$1 \sigma$ Confidence')
-        plt.plot(mc_table['Frequency'], mc_table['Power_50'], linestyle='--', color='b', linewidth=1.25, label='Median')
-        plt.vlines(x=mc_table['Frequency'][peak_ind], ymin=[0 for i in range(len(pap.get('peak_heights')))], 
-                   ymax=pap.get('peak_heights'), linestyle='--', color='g', linewidth=1.25, label='16P > mean+2*sd')
-        plt.xscale('log')
-        plt.xlabel('Frequency [1/Days]')
-        plt.ylabel('Power')
-        plt.legend()
-
-        path = "Figures/" #Sub Folders in the Path
-        which_fig = "_LSP"
-        out = ".png"
-
-        if save_figs:
-            plt.savefig(Path_to_Save_to + path + str(Cluster_name) + which_fig + out, format='png')
-        if print_figs:
-            plt.show()
-
-        plt.close(fig)
-
-        n_peaks = len(mc_table[peak_ind])
-
-        # 5 Days is around the middle of our time scale, and represents a threshold of how different stars varry (McQuillan et al. 2012)
-        # So we want to calculate how much of our power is coming from time scales shorter/longer than 5 days
-        average_power_below_5_days = np.mean(mc_table['Power_50'][:495])
-        average_power_above_5_days = np.mean(mc_table['Power_50'][495:])
-
-        ratio_of_power_at_high_v_low_freq = round(average_power_above_5_days/average_power_below_5_days, 5)
-
-        # Because each cluster is going to have a different number of peaks, I have an array of len 25,
-        # we will show the number of peaks wach cluster has as a key to how many indices of the array are relevant
-        freqs = np.zeros((25))
-        pap_a = np.zeros((25))
-        for i in range(len(mc_table[peak_ind])):
-            freqs[i] = round(mc_table['Frequency'][peak_ind][i],3)
-            pap_a[i] = round(pap.get('peak_heights')[i], 4)
-
-        max_LS_power = max(mc_table['Power_50'])
-        famp = mc_table['Frequency'][np.where(mc_table['Power_50'] == max_LS_power)]
-
-        freqs_with_peaks = freqs[np.where(freqs != 0)]
-
-        pixel_loc_write = []
-        P_LS_pixel = []
-        omega = np.arange(0.04,11,0.001)
-
-        return fig, (np.array([round(max_LS_power, 5), round(famp[0], 4), freqs, pap_a, n_peaks,
-                               ratio_of_power_at_high_v_low_freq]))
-
-    figure, array = MonteCarlo_LSP(light_curve)
-
-    return figure, array
+    return med, percentiles[1:], lsp_stats
 
 
 def autocorr(light_curve, Cluster_name, print_figs, save_figs):
