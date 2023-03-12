@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy
-import statsmodels 
+from statsmodels.tsa.stattools import acf as calc_acf
 import os
 
 from scipy.signal import find_peaks, argrelextrema
@@ -163,12 +163,21 @@ def longest_contiguous_chunk(times, largest_gap_allowed=0.25):
     return chunk_mask
 
 
-def autocorr(light_curve, Cluster_name, print_figs, save_figs):
+def autocorr(time, flux, largest_gap_allowed=0.25):
+    chunk_mask = longest_contiguous_chunk(time, largest_gap_allowed=largest_gap_allowed)
+
+    ac_time, ac_flux = time[chunk_mask], flux[chunk_mask]
+    acf, confint = calc_acf(ac_flux, nlags=len(ac_flux) - 1, alpha=0.3173)
+
+    plot_times = ac_time - ac_time[0]
+
+
+def autocorr_old(light_curve, Cluster_name, print_figs, save_figs):
     # Because the gap in the middle of the observation can drastically effect the ACF,
     # we only calculate the first half
     fh_cor_lc = light_curve[:(len(light_curve)//2)]
 
-    acf = statsmodels.tsa.stattools.acf(fh_cor_lc['flux'], nlags=len(fh_cor_lc)-1, alpha=.33)
+    acf = calc_acf(fh_cor_lc['flux'], nlags=len(fh_cor_lc)-1, alpha=.33)
 
     err = acf[1]
     ac = acf[0]
