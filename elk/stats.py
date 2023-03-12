@@ -132,6 +132,37 @@ def periodogram(time, flux, flux_err, frequencies, n_bootstrap=1000, max_peaks=2
     return med, percentiles[1:], lsp_stats
 
 
+def longest_contiguous_chunk(times, largest_gap_allowed=0.25):
+    """Create a mask for the largest contiguous chunk of observations
+
+    Parameters
+    ----------
+    times : :class:`~numpy.ndarray`
+        Array of times at which observations were taken
+    largest_gap_allowed : `float`, optional
+        Largest gap in the data which is allowed in a chunk (in days), by default 0.25
+
+    Returns
+    -------
+    chunk_mask : :class:`~numpy.ndarray`
+        Boolean mask on observations in the largest chunk
+    """
+    # find the difference in time between observations
+    delta_times = np.ediff1d(times)
+
+    # identify inds at which the change is larger than the maximum allowed and append start/end
+    gap_inds = np.argwhere(delta_times > largest_gap_allowed).flatten()
+    gap_inds = np.concatenate(([-1], gap_inds, [len(times) - 1]))
+
+    # find the largest length of time between gaps
+    max_ind = np.argmax(np.ediff1d(gap_inds))
+
+    # create a mask for that longest chunk
+    all_inds = np.arange(len(times))
+    chunk_mask = (all_inds > gap_inds[max_ind]) & (all_inds <= gap_inds[max_ind + 1])
+    return chunk_mask
+
+
 def autocorr(light_curve, Cluster_name, print_figs, save_figs):
     # Because the gap in the middle of the observation can drastically effect the ACF,
     # we only calculate the first half
@@ -178,6 +209,7 @@ def autocorr(light_curve, Cluster_name, print_figs, save_figs):
 
 
 def Get_Variable_Stats_Table(Cluster_name, print_figs=True, save_figs=True):
+    # TODO: This should all get moved into the LightCurve Class
     # Test to see if I have already downloaded and corrected this cluster, If I have, read in the data
     if Have_Lightcurve(Cluster_name):
         data = Table.read(Path_to_Read_in_LCs + str(Cluster_name) + '.fits')
