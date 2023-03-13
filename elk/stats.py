@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import scipy
 from statsmodels.tsa.stattools import acf as calc_acf
 import os
@@ -7,7 +6,7 @@ import os
 from scipy.signal import find_peaks, argrelextrema
 import scipy.linalg
 
-from astropy.table import Table, Column
+from astropy.table import Table
 from astropy.timeseries import LombScargle
 
 from .plot import plot_acf
