@@ -188,51 +188,6 @@ def autocorr(time, flux, largest_gap_allowed=0.25, plot=False, **plot_kwargs):
         return ac_time, acf, confint, acf_stats
 
 
-def autocorr_old(light_curve, Cluster_name, print_figs, save_figs):
-    # Because the gap in the middle of the observation can drastically effect the ACF,
-    # we only calculate the first half
-    fh_cor_lc = light_curve[:(len(light_curve)//2)]
-
-    acf = calc_acf(fh_cor_lc['flux'], nlags=len(fh_cor_lc)-1, alpha=.33)
-
-    err = acf[1]
-    ac = acf[0]
-    acf_p16 = [err[i][0] for i in range(len(err))]
-    acf_p84 = [err[i][1] for i in range(len(err))]
-
-    deltatimes = []
-    for i in range(len(fh_cor_lc)-1):
-        deltatimes.append(fh_cor_lc['time'][i+1]-fh_cor_lc['time'][i])
-
-    plot_times = np.cumsum(deltatimes)
-
-    fig = plt.figure()
-    plt.title("ACF"+str(Cluster_name))
-    plt.plot(plot_times, ac[:-1])
-    plt.fill_between(plot_times, acf_p16[:-1], acf_p84[:-1], color='grey',
-                     label=r'$1 \sigma$ Confidence', alpha=.5)
-    plt.xlabel('Delta Time [Days]')
-    plt.text(1, .9, str(Cluster_name), fontsize=16)
-    path = "Figures/"
-    which_fig = "_ACF_firsthalf"
-    out = ".png"
-
-    if save_figs:
-        plt.savefig(Path_to_Save_to + path + str(Cluster_name) + which_fig + out, format='png')
-    if print_figs:
-        plt.show()
-
-    plt.close(fig)
-
-    first_min_ts = plot_times[argrelextrema(ac, np.less)[0][0]]
-    ac_ai = ac[np.where(plot_times > first_min_ts)]
-    max_ac = max(ac_ai)
-    pa_mac = plot_times[np.where(ac == max_ac)]
-    ac_rms = get_rms(ac)
-
-    return fig, (round(max_ac, 5), round(pa_mac[0], 4), round(ac_rms, 5))
-
-
 def Get_Variable_Stats_Table(Cluster_name, print_figs=True, save_figs=True):
     # TODO: This should all get moved into the LightCurve Class
     # Test to see if I have already downloaded and corrected this cluster, If I have, read in the data
