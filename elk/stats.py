@@ -12,26 +12,24 @@ from astropy.timeseries import LombScargle
 from .plot import plot_acf
 
 
-Path_to_Save_to = '/Users/Tobin/Dropbox/TESS_project/Variability_Statistics/Test_Pipeline_Module/Variability_Metrics/'
-Path_to_Read_in_LCs = '/Users/Tobin/Dropbox/TESS_project/Variability_Statistics/Test_Pipeline_Module/Corrected_LCs/'
-
-
-def Have_Lightcurve(Cluster_name):
-    if os.path.exists(Path_to_Read_in_LCs+str(Cluster_name)+'.fits'): 
-        return True
-    else:
-        return False
-
-
-def Read_in_Lightcurve(Cluster_name):
-    return Table.read(Path_to_Read_in_LCs+str(Cluster_name)+'.fits')
-
-
 def get_MAD(flux):
+    """Get the median absolute deviation of an array of fluxes
+
+    Parameters
+    ----------
+    flux : :class:`~numpy.ndarray`
+        Array of fluxes
+
+    Returns
+    -------
+    mad : `float`
+        Median absolute deviation
+    """
     return np.median(np.abs(flux - np.median(flux)))
 
 
 def get_range(flux, bottom_percentile, upper_percentile):
+    # TODO: Ask Tobin but it seems like this will only work for an array of fluxes of length 100?
     # Generalized to get the range for whatever percentile the heart desires
     flux_l = list(flux)
     flux_l.sort()
@@ -44,17 +42,64 @@ def get_range(flux, bottom_percentile, upper_percentile):
     return r
 
 
-def skewness(flux):
+def get_skewness(flux):
+    """Calculate the skewness of an array of fluxes
+
+    Parameters
+    ----------
+    flux : :class:`~numpy.ndarray`
+        Array of fluxes
+
+    Returns
+    -------
+    skewness : `float`
+        Skewness
+    """
     return scipy.stats.moment(flux, moment=3)
 
 
 def von_neumann_ratio(flux):
-    # https://www.jstor.org/stable/2235951
-    nu = np.sum(np.ediff1d(flux)**2) / np.var(flux)
-    return 1 / nu
+    """Calculate the (inverted) Von Neumann Ratio for an array of fluxes
+
+    See `von Neumann 1941 <https://www.jstor.org/stable/2235951>`_ and
+    `Sokolovsky+2017 <https://ui.adsabs.harvard.edu/abs/2017MNRAS.464..274S/abstract>`_ Eq. 19
+
+    Parameters
+    ----------
+    flux : :class:`~numpy.ndarray`
+        Array of fluxes
+
+    Returns
+    -------
+    ratio : `float`
+        Von Neumann Ratio
+    """
+    eta = np.sum(np.ediff1d(flux)**2) / np.var(flux)
+    return 1 / eta
 
 
-def J_stetson(time, mag, mag_err):
+def J_stetson(time, mag, mag_err, pair_threshold=0.021):
+    """Calculate the J Stetson statistic as a measure of variability
+
+    See `Stetson+1996 <https://ui.adsabs.harvard.edu/abs/1996PASP..108..851S/abstract>`_ and Eq. 12 of
+    `Sokolovsky+2017 <https://ui.adsabs.harvard.edu/abs/2017MNRAS.464..274S/abstract>`_
+
+    Parameters
+    ----------
+    time : :class:`~numpy.ndarray`
+        Time of observations
+    mag : :class:`~numpy.ndarray`
+        Magnitudes of each observation
+    mag_err : :class:`~numpy.ndarray`
+        Errors on the magnitudes
+    pair_threshold : `float`, optional
+        Threshold for whether to consider observations close enough, by default 0.021 days (=~30 min)
+
+    Returns
+    -------
+    J : `float`
+        J Stetson Statistic
+    """
     # get the difference in time between observations
     delta_times = np.concatenate((np.ediff1d(time), [1]))
 
@@ -67,8 +112,7 @@ def J_stetson(time, mag, mag_err):
     w = np.ones(len(delta_times))
 
     # mask for which observations are part of a pair (0.021 day=~30min)
-    # TODO: This should probably be an input and use astropy.units
-    pairs = delta_times < 0.021
+    pairs = delta_times < pair_threshold
     inds = np.argwhere(pairs).flatten()
 
     # calculate P and w
@@ -82,6 +126,41 @@ def J_stetson(time, mag, mag_err):
 
 
 def periodogram(time, flux, flux_err, frequencies, n_bootstrap=1000, max_peaks=25, freq_thresh=5):
+    """Generate a bootstrapped Lomb-Scargle periodogram and various associated statistics
+
+    Parameters
+    ----------
+    time : :class:`~numpy.ndarray`
+        Times of observations
+    flux : :class:`~numpy.ndarray`
+        Flux for each observations
+    flux_err : :class:`~numpy.ndarray`
+        Errors on the fluxes
+    frequencies : :class:`~numpy.ndarray`
+        Frequencies at which to evaluate the periodogram
+    n_bootstrap : `int`, optional
+        How many bootstraps to perform, by default 1000
+    max_peaks : `int`, optional
+        Fixed number of max peaks to return, by default 25. If None is given then the number of peaks that
+        exist will be returned rather than truncated/padded to this fixed number.
+    freq_thresh : `int`, optional
+        Threshold for high vs. low frequency, by default 5 days since this represents a threshold of how
+        different stars vary
+        `McQuillan+2012 <https://ui.adsabs.harvard.edu/abs/2013ApJ...775L..11M/abstract>`_.
+
+    Returns
+    -------
+    med : :class:`~numpy.ndarray`
+        Median power at each frequency
+    percentiles : :class:`~numpy.ndarray`
+        1 and 2-sigma power at each frequency (in order of 2-, 1-, 1+, 2+) with shape `(4, len(frequencies))`
+    lsp_stats : `dict`
+        Dictionary of various statistics related to the periodogram. Keys are: ["max_power",
+        "freq_at_max_power", "peak_freqs", "power_at_peaks", "n_peaks", "ratio_of_power_at_high_v_low_freq"].
+        Many of these are self explanatory but we note that `peak_freqs` and `power_at_peaks` will always have
+        a length of `max_peaks` may need to be masked to just take the first `n_peaks`. (This feature is
+        useful when saving to a FITS file with a required fixed column width).
+    """
     flux_samples = np.transpose([np.repeat(flux[i], n_bootstrap)
                                  + np.random.normal(loc=0,
                                                     scale=flux_err[i],
@@ -95,8 +174,7 @@ def periodogram(time, flux, flux_err, frequencies, n_bootstrap=1000, max_peaks=2
     peak_threshold = np.mean(med) + 2 * np.std(med)
     peak_inds, peak_info = find_peaks(one_below, height=peak_threshold)
 
-    # 5 Days is around the middle of our time scale, and represents a threshold of how different stars vary (McQuillan et al. 2012)
-    # So we want to calculate how much of our power is coming from time scales shorter/longer than 5 days
+    # calculate how much of our power is coming from timescales shorter/longer than threshold
     low_freq = frequencies > freq_thresh
     ratio_of_power_at_high_v_low_freq = np.mean(med[~low_freq]) / np.mean(med[low_freq])
 
@@ -156,6 +234,34 @@ def longest_contiguous_chunk(times, largest_gap_allowed=0.25):
 
 
 def autocorr(time, flux, largest_gap_allowed=0.25, plot=False, **plot_kwargs):
+    """Calculate the autocorrelation function for an array of fluxes
+
+    Parameters
+    ----------
+    time : :class:`~numpy.ndarray`
+        Times of observations
+    flux : :class:`~numpy.ndarray`
+        Flux for each observations
+    largest_gap_allowed : `float`, optional
+        Largest gap in the data which is allowed in a chunk (in days), by default 0.25
+    plot : `bool`, optional
+        Whether to show a plot of the autocorrelation, by default False
+    plot_kwargs : `various`
+        Arguments to pass to `elk.plot.plot_acf`
+
+    Returns
+    -------
+    ac_time : :class:`~numpy.ndarray`
+        Times evaluated for the autocorrelation function
+    acf : :class:`~numpy.ndarray`
+        The autocorrelation function
+    confint : :class:`~numpy.ndarray`
+        1-sigma confidence interval around the autocorrelation function with shape (len(ac_time), 2)
+    acf_stats : `dict`
+        Some simple stats for the autocorrelation function
+    fig, ax : :class:`~matplotlib.pyplot.Figure`, :class:`~matplotlib.pyplot.AxesSubplot`
+        Figure and axis on which the correlation function has been plotted
+    """
     chunk_mask = longest_contiguous_chunk(time, largest_gap_allowed=largest_gap_allowed)
 
     ac_time, ac_flux = time[chunk_mask], flux[chunk_mask]
@@ -173,9 +279,28 @@ def autocorr(time, flux, largest_gap_allowed=0.25, plot=False, **plot_kwargs):
 
     if plot:
         fig, ax = plot_acf(plot_times, acf, confint, **plot_kwargs)
-        return ac_time, acf, confint, fig, ax, acf_stats
+        return ac_time, acf, confint, acf_stats, fig, ax
     else:
         return ac_time, acf, confint, acf_stats
+
+
+##############################################
+# I'm going to move the rest of this elsewhere
+
+
+Path_to_Save_to = '/Users/Tobin/Dropbox/TESS_project/Variability_Statistics/Test_Pipeline_Module/Variability_Metrics/'
+Path_to_Read_in_LCs = '/Users/Tobin/Dropbox/TESS_project/Variability_Statistics/Test_Pipeline_Module/Corrected_LCs/'
+
+
+def Have_Lightcurve(Cluster_name):
+    if os.path.exists(Path_to_Read_in_LCs+str(Cluster_name)+'.fits'): 
+        return True
+    else:
+        return False
+
+
+def Read_in_Lightcurve(Cluster_name):
+    return Table.read(Path_to_Read_in_LCs+str(Cluster_name)+'.fits')
 
 
 def Get_Variable_Stats_Table(Cluster_name, print_figs=True, save_figs=True):
@@ -193,7 +318,7 @@ def Get_Variable_Stats_Table(Cluster_name, print_figs=True, save_figs=True):
         range_1_99 = [np.log10(get_range(normalized_flux, .01, .99))]
 
         j_stat = [get_J_Stetson_Stat(data)]
-        sness = [np.log10(abs(skewness(data['flux'])))]
+        sness = [np.log10(abs(get_skewness(data['flux'])))]
         vnr = [Von_Neumann_Ratio(normalized_flux)]
 
         max_ac = []
