@@ -27,15 +27,6 @@ def Read_in_Lightcurve(Cluster_name):
     return Table.read(Path_to_Read_in_LCs+str(Cluster_name)+'.fits')
 
 
-def get_rms(flux):
-    return np.sqrt(np.mean(np.square(flux)))
-
-
-def get_std(flux):
-    # Standard Deviation
-    return np.std(flux)
-
-
 def get_MAD(flux):
     return np.median(np.abs(flux - np.median(flux)))
 
@@ -177,7 +168,7 @@ def autocorr(time, flux, largest_gap_allowed=0.25, plot=False, **plot_kwargs):
     acf_stats = {
         "max_autocorrelation": max_ac,
         "time_of_max_autocorrelation": plot_times[acf == max_ac],
-        "rms": get_rms(acf)
+        "rms": np.sqrt(np.mean(np.square(acf)))
     }
 
     if plot:
@@ -195,8 +186,8 @@ def Get_Variable_Stats_Table(Cluster_name, print_figs=True, save_figs=True):
 
         normalized_flux = np.array(data['flux'])/np.median(data['flux'])
 
-        rms = [np.log10(get_rms(normalized_flux))]
-        std = [np.log10(get_std(normalized_flux))]
+        rms = [np.log10(np.sqrt(np.mean(normalized_flux**2)))]
+        std = [np.log10(np.std(normalized_flux))]
         MAD = [np.log10(get_MAD(normalized_flux))]
         range_5_95 = [np.log10(get_range(normalized_flux, .05, .95))]
         range_1_99 = [np.log10(get_range(normalized_flux, .01, .99))]
