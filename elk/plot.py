@@ -69,16 +69,48 @@ def plot_periodogram(frequencies, power, power_percentiles, peak_freqs,
     return fig, ax
 
 
-def plot_acf(time, acf=None, acf_percentiles=None, title=None, fig=None, ax=None, show=False, save_path=None):
+def plot_acf(time, acf, acf_percentiles=None, title=None, fig=None, ax=None, show=False, save_path=None):
+    """Plot an autocorrelation function
+
+    Parameters
+    ----------
+    time : :class:`~numpy.ndarray`
+        Times at which autocorrelation function is evaluated
+    acf : :class:`~numpy.ndarray`, optional
+        The autocorrelation function, by default None
+    acf_percentiles : :class:`~numpy.ndarray`, optional
+        1-sigma confidence interval on the autocorrelation function, by default None
+    title : `str`, optional
+        A title for the plot, by default None
+    fig : :class:`~matplotlib.pyplot.Figure`, optional
+        Figure on which to plot, if either `fig` or `ax` is None then new ones are created, by default None
+    ax : :class:`~matplotlib.pyplot.AxesSubplot`, optional
+        Axis on which to plot, if either `fig` or `ax` is None then new ones are created, by default None
+    show : bool, optional
+        Whether to show the plot, by default True
+    save_path : `str`, optional
+        Where to save the plot, if None then plot is not saved, by default None
+
+    Returns
+    -------
+    fig, ax : :class:`~matplotlib.pyplot.Figure`, :class:`~matplotlib.pyplot.AxesSubplot`
+        Figure and axis on which the periodogram has been plotted
+    """
+    # create figure if necessary and add title
     if fig is None or ax is None:
         fig, ax = plt.subplots()
     ax.set_title(title)
 
+    # shade percentiles if desired
+    if acf_percentiles is not None:
+        ax.fill_between(time, acf_percentiles[:, 0], acf_percentiles[:, 1], color='grey', alpha=.5)
+
+    # plot autocorrelation function and label axes
     ax.plot(time, acf)
-    ax.fill_between(time, acf_percentiles[:, 0], acf_percentiles[:, 1], color='grey', alpha=.5)
     ax.set_xlabel(r'Time $[\rm days]$')
     ax.set_ylabel("Autocorrelation")
 
+    # save and show as desired
     if save_path is not None:
         plt.savefig(save_path, format='png', bbox_inches="tight")
     if show:
