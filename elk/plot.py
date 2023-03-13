@@ -33,21 +33,19 @@ def plot_periodogram(frequencies, power, power_percentiles, peak_freqs,
     return fig, ax
 
 
-def plot_acf(time, acf=None, flux=None, fig=None, ax=None):
-    fig, ax = plt.subplots()
-    plt.title("ACF"+str(Cluster_name))
-    plt.plot(plot_times, ac[:-1])
-    plt.fill_between(plot_times, acf_p16[:-1], acf_p84[:-1], color='grey',
-                     label=r'$1 \sigma$ Confidence', alpha=.5)
-    plt.xlabel('Delta Time [Days]')
-    plt.text(1, .9, str(Cluster_name), fontsize=16)
-    path = "Figures/"
-    which_fig = "_ACF_firsthalf"
-    out = ".png"
+def plot_acf(time, acf=None, acf_percentiles=None, title=None, fig=None, ax=None, show=False, save_path=None):
+    if fig is None or ax is None:
+        fig, ax = plt.subplots()
+    ax.set_title(title)
 
-    if save_figs:
-        plt.savefig(Path_to_Save_to + path + str(Cluster_name) + which_fig + out, format='png')
-    if print_figs:
+    ax.plot(time, acf)
+    ax.fill_between(time, acf_percentiles[:, 0], acf_percentiles[:, 1], color='grey', alpha=.5)
+    ax.set_xlabel(r'Time $[\rm days]$')
+    ax.set_ylabel("Autocorrelation")
+
+    if save_path is not None:
+        plt.savefig(save_path, format='png', bbox_inches="tight")
+    if show:
         plt.show()
 
-    plt.close(fig)
+    return fig, ax

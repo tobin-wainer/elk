@@ -10,6 +10,8 @@ import scipy.linalg
 from astropy.table import Table, Column
 from astropy.timeseries import LombScargle
 
+from .plot import plot_acf
+
 
 Path_to_Save_to = '/Users/Tobin/Dropbox/TESS_project/Variability_Statistics/Test_Pipeline_Module/Variability_Metrics/'
 Path_to_Read_in_LCs = '/Users/Tobin/Dropbox/TESS_project/Variability_Statistics/Test_Pipeline_Module/Corrected_LCs/'
@@ -163,13 +165,27 @@ def longest_contiguous_chunk(times, largest_gap_allowed=0.25):
     return chunk_mask
 
 
-def autocorr(time, flux, largest_gap_allowed=0.25):
+def autocorr(time, flux, largest_gap_allowed=0.25, plot=False, **plot_kwargs):
     chunk_mask = longest_contiguous_chunk(time, largest_gap_allowed=largest_gap_allowed)
 
     ac_time, ac_flux = time[chunk_mask], flux[chunk_mask]
     acf, confint = calc_acf(ac_flux, nlags=len(ac_flux) - 1, alpha=0.3173)
-
     plot_times = ac_time - ac_time[0]
+
+    # find max autocorrelction (cut first value since it is meaningless in this context)
+    # TODO: Tobin check this^
+    max_ac = max(acf[plot_times > plot_times[argrelextrema(acf, np.less)[0][0]]])
+    acf_stats = {
+        "max_autocorrelation": max_ac,
+        "time_of_max_autocorrelation": plot_times[acf == max_ac],
+        "rms": get_rms(acf)
+    }
+
+    if plot:
+        fig, ax = plot_acf(plot_times, acf, confint, **plot_kwargs)
+        return ac_time, acf, confint, fig, ax, acf_stats
+    else:
+        return ac_time, acf, confint, acf_stats
 
 
 def autocorr_old(light_curve, Cluster_name, print_figs, save_figs):
