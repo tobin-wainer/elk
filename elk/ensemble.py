@@ -318,6 +318,8 @@ class EnsembleLC:
         LC_PATH = os.path.join(self.output_path, 'Corrected_LCs/',
                                str(self.callable) + 'output_table.fits')
         # Test to see if I have already downloaded and corrected this cluster, If I have, read in the data
+        # TODO: this won't work right now, switch to giving an option to the user during __init__ to load from
+        # a file and then only re-run if they give a force option or something
         if self.previously_downloaded():
             output_table = Table.read(LC_PATH, hdu=1)
             return output_table
@@ -332,16 +334,16 @@ class EnsembleLC:
                 self.clear_cache()
 
         hdr = fits.Header()
-        hdr['Name'] = self.cluster_name
-        hdr['Location'] = self.location
-        hdr["Radius [deg]"] = self.radius
-        hdr['Log Age'] = self.cluster_age
-        hdr["Has_TESS_Data"] = self.sectors_available > 0
-        hdr["n_obs_available"] = self.sectors_available
-        hdr["n_good_obs"] = self.n_good_obs
-        hdr["n_failed_download"] = self.n_failed_download
-        hdr["n_near_edge"] = self.n_near_edge
-        hdr["n_scattered_light"] = self.n_scattered_light
+        hdr['name'] = self.cluster_name
+        hdr['location'] = self.location
+        hdr["radius"] = (self.radius, "Radius in degrees")
+        hdr['log_age'] = (self.cluster_age, "Log Age in dex")
+        hdr["has_data"] = (self.sectors_available > 0, "Whether there was TESS data available")
+        hdr["n_obs"] = (self.sectors_available, "How many sectors of observations exist")
+        hdr["n_good"] = (self.n_good_obs, "Number of good observations")
+        hdr["n_dlfail"] = (self.n_failed_download, "Number of failed downloads")
+        hdr["n_edge"] = (self.n_near_edge, "Number of obs near edge")
+        hdr["n_scatt"] = (self.n_scattered_light, "Number of obs with scattered light")
         empty_primary = fits.PrimaryHDU(header=hdr)
         hdul = fits.HDUList([empty_primary] + [lc.hdu for lc in self.lcs if lc is not None])
         if self.output_path is not None:
@@ -396,16 +398,16 @@ def from_fits(filepath, **kwargs):
     new_ecl = EnsembleLC(cluster_name="", radius=None, cluster_age=None, output_path=None, **kwargs)
     with fits.open(filepath) as hdul:
         details = hdul[0]
-        new_ecl.cluster_name = details.header["Name"]
-        new_ecl.location = details.header["Location"]
+        new_ecl.cluster_name = details.header["name"]
+        new_ecl.location = details.header["location"]
         new_ecl.callable = new_ecl.cluster_name if new_ecl.cluster_name is not None else new_ecl.location
-        new_ecl.radius = details.header["Radius [deg]"]
-        new_ecl.cluster_age = details.header["Log Age"]
-        new_ecl.sectors_available = details.header["n_obs_available"]
-        new_ecl.n_good_obs = details.header["n_good_obs"]
-        new_ecl.n_failed_download = details.header["n_failed_download"]
-        new_ecl.n_near_edge = details.header["n_near_edge"]
-        new_ecl.n_scattered_light = details.header["n_scattered_light"]
+        new_ecl.radius = details.header["radius"]
+        new_ecl.cluster_age = details.header["log_age"]
+        new_ecl.sectors_available = details.header["n_obs"]
+        new_ecl.n_good_obs = details.header["n_good"]
+        new_ecl.n_failed_download = details.header["n_dlfail"]
+        new_ecl.n_near_edge = details.header["n_edge"]
+        new_ecl.n_scattered_light = details.header["n_scatt"]
 
         new_ecl.lcs = [SimpleCorrectedLightcurve(fits_path=filepath, hdu_index=hdu_ind)
                        for hdu_ind in range(1, len(hdul))]
