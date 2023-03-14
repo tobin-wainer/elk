@@ -282,28 +282,21 @@ class EnsembleLC:
                 self.n_scattered_light += 1
                 return
             else:
+                # This Else Statement means that the Lightcurve is good and has passed our quality checks
                 if self.verbose:
                     print(sector_ind, "Passed Quality Tests")
                 self.n_good_obs += 1
                 self.which_sectors_good.append(sector_ind)
-                # This Else Statement means that the Lightcurve is good and has passed our quality checks
-
-                if self.output_path is not None and self.save["lcs"]:
-                    lc.full_corrected_lightcurve_table.write(os.path.join(self.output_path,
-                                                                          "Corrected_LCs",
-                                                                          self.callable + ".fits"),
-                                                             format='fits', append=True)
+                self.lcs[sector_ind] = lc
 
                 # Now I am going to save a plot of the light curve to go visually inspect later
-                range_ = max(lc.full_corrected_lightcurve_table['flux']) - min(lc.full_corrected_lightcurve_table['flux'])
+                range_ = max(lc.corrected_lc['flux']) - min(lc.corrected_lc['flux'])
                 fig = plt.figure()
                 plt.title(f'Observation: {sector_ind}')
-                plt.plot(lc.full_corrected_lightcurve_table['time'], lc.full_corrected_lightcurve_table['flux'],
-                         color='k', linewidth=.5)
+                plt.plot(lc.corrected_lc['time'], lc.corrected_lc['flux'], color='k', linewidth=.5)
                 plt.xlabel('Delta Time [Days]')
                 plt.ylabel('Flux [e/s]')
-                plt.text(lc.full_corrected_lightcurve_table['time'][0],
-                         (max(lc.full_corrected_lightcurve_table['flux'])-(range_*0.05)),
+                plt.text(lc.corrected_lc['time'][0], (max(lc.corrected_lc['flux'])-(range_*0.05)),
                          self.callable, fontsize=14)
 
                 if self.output_path is not None and self.save["figures"]:
@@ -312,7 +305,7 @@ class EnsembleLC:
                     plt.savefig(path, format='png', bbox_inches="tight")
                 plt.close(fig)
 
-                self.lc_lens.append(len(lc.full_corrected_lightcurve_table))
+                self.lc_lens.append(len(lc.corrected_lc))
         if self.no_lk_cache():
             self.clear_cache()
 
