@@ -3,19 +3,19 @@ import lightkurve as lk
 import matplotlib.pyplot as plt
 import scipy
 from astropy.table import Table, Column, join, vstack
+from astropy.io import fits
 import astropy.units as u
 
 import os.path
 import gc
 
-from .lightcurve import TESSCutLightcurve
-from .utils import flux_to_mag, flux_err_to_mag_err
+from .lightcurve import SimpleCorrectedLightcurve, TESSCutLightcurve
 
 
 class EnsembleLC:
     def __init__(self, radius, cluster_age, output_path="./", cluster_name=None, location=None,
                  percentile=80, cutout_size=99, scattered_light_frequency=5, n_pca=6, verbose=False,
-                 no_lk_cache=False, debug=False):
+                 no_lk_cache=False, ignore_previous_downloads=False, debug=False):
         """Class for generating lightcurves from TESS cutouts
 
         Parameters
@@ -46,6 +46,8 @@ class EnsembleLC:
         no_lk_cache : `bool`, optional
             Whether to skip using the LightKurve cache and scrub downloads instead (can be useful for runs
             on a computing cluster with limited memory space), by default False
+        ignore_previous_downloads : `bool`, optional
+            Whether to ignore previously downloaded and corrected lightcurves            
         debug : `bool`, optional
             #TODO DELETE THIS, by default False
         """
@@ -66,7 +68,7 @@ class EnsembleLC:
                 cluster_age = np.log10(cluster_age.to(u.yr).value)
 
         # check main output folder
-        if not os.path.exists(output_path):
+        if output_path is not None and not os.path.exists(output_path):
             print(f"WARNING: There is no output folder at the path that you supplied ({output_path})")
             create_it = input(("  Would you like me to create it for you? "
                                "(If not then no files will be saved) [Y/n]"))
@@ -97,6 +99,7 @@ class EnsembleLC:
                 else:
                     self.save[key] = True
 
+        self.lcs = []
         self.output_path = output_path
         self.radius = radius
         self.cluster_age = cluster_age
@@ -110,6 +113,16 @@ class EnsembleLC:
         self.verbose = verbose
         self.no_lk_cache = no_lk_cache
         self.debug = debug
+
+        if self.output_path is not None and self.previously_downloaded() and not ignore_previous_downloads:
+            self = from_fits(os.path.join(self.output_path, "Corrected_LCs",
+                                          self.callable + "output_table.fits"), existing_class=self)
+
+        # We are also going to document how many observations failed each one of our quality tests
+        self.n_failed_download = 0
+        self.n_near_edge = 0
+        self.n_scattered_light = 0
+        self.n_good_obs = 0
 
     def __repr__(self):
         return f"<{self.__class__.__name__} - {self.callable}>"
@@ -221,31 +234,25 @@ class EnsembleLC:
         lc_Lens : :class:`~numpy.ndarray`
             The length of each lightcurve
         """
-        # We are also going to document how many observations failed each one of our quality tests
-        self.n_failed_download = 0
-        self.n_near_edge = 0
-        self.n_scattered_light = 0
-        self.n_good_obs = 0
-        self.which_sectors_good = []
-        self.lc_lens = []
+        self.lcs = [None for _ in range(self.sectors_available)]
 
         # start iterating through the observations
-        for current_try_sector in range(self.sectors_available):
+        for sector_ind in range(self.sectors_available):
             if self.verbose:
-                print(f"Starting Quality Tests for Observation: {current_try_sector}")
+                print(f"Starting Quality Tests for Observation: {sector_ind}")
 
             # if we are avoiding caching then delete every fits file in the cache folder
             if self.no_lk_cache:
                 self.clear_cache()
 
             # First is the Download Test
-            tpfs = self.downloadable(current_try_sector)
-            if (tpfs is None) & (current_try_sector + 1 < self.sectors_available):
+            tpfs = self.downloadable(sector_ind)
+            if (tpfs is None) & (sector_ind + 1 < self.sectors_available):
                 if self.verbose:
                     print('Failed Download')
                 self.n_failed_download += 1
                 continue
-            elif (tpfs is None) & (current_try_sector + 1 == self.sectors_available):
+            elif (tpfs is None) & (sector_ind + 1 == self.sectors_available):
                 if self.verbose:
                     print('Failed Download')
                 self.n_failed_download += 1
@@ -256,12 +263,12 @@ class EnsembleLC:
 
             # Now Edge Test
             near_edge = lc.near_edge()
-            if near_edge & (current_try_sector + 1 < self.sectors_available):
+            if near_edge & (sector_ind + 1 < self.sectors_available):
                 if self.verbose:
                     print('Failed Near Edge Test')
                 self.n_near_edge += 1
                 continue
-            if near_edge & (current_try_sector + 1 == self.sectors_available):
+            if near_edge & (sector_ind + 1 == self.sectors_available):
                 if self.verbose:
                     print('Failed Near Edge Test')
                 self.n_near_edge += 1
@@ -270,52 +277,39 @@ class EnsembleLC:
             lc.correct_lc()
 
             scattered_light_test = self.scattered_light(lc.quality_tpfs, lc.full_model_normalized)
-            if scattered_light_test & (current_try_sector + 1 < self.sectors_available):
+            if scattered_light_test & (sector_ind + 1 < self.sectors_available):
                 if self.verbose:
                     print("Failed Scattered Light Test")
                 self.n_scattered_light += 1
                 continue
-            if scattered_light_test & (current_try_sector + 1 == self.sectors_available):
+            if scattered_light_test & (sector_ind + 1 == self.sectors_available):
                 if self.verbose:
                     print("Failed Scattered Light Test")
                 self.n_scattered_light += 1
                 return
             else:
-                if self.verbose:
-                    print(current_try_sector, "Passed Quality Tests")
-                self.n_good_obs += 1
-                self.which_sectors_good.append(current_try_sector)
                 # This Else Statement means that the Lightcurve is good and has passed our quality checks
-
-                # Writing out the data, so I never have to Download and Correct again, but only if there is data
-                lc.full_corrected_lightcurve_table.add_column(Column(flux_to_mag(lc.full_corrected_lightcurve_table['flux'])), name='mag')
-                lc.full_corrected_lightcurve_table.add_column(Column(flux_err_to_mag_err(lc.full_corrected_lightcurve_table['flux'], lc.full_corrected_lightcurve_table['flux_err'])), name='mag_err')
-
-                if self.output_path is not None and self.save["lcs"]:
-                    lc.full_corrected_lightcurve_table.write(os.path.join(self.output_path,
-                                                                          "Corrected_LCs",
-                                                                          self.callable + ".fits"),
-                                                             format='fits', append=True)
+                if self.verbose:
+                    print(sector_ind, "Passed Quality Tests")
+                self.n_good_obs += 1
+                self.lcs[sector_ind] = lc
 
                 # Now I am going to save a plot of the light curve to go visually inspect later
-                range_ = max(lc.full_corrected_lightcurve_table['flux']) - min(lc.full_corrected_lightcurve_table['flux'])
+                range_ = max(lc.corrected_lc.flux.value) - min(lc.corrected_lc.flux.value)
                 fig = plt.figure()
-                plt.title(f'Observation: {current_try_sector}')
-                plt.plot(lc.full_corrected_lightcurve_table['time'], lc.full_corrected_lightcurve_table['flux'],
-                         color='k', linewidth=.5)
+                plt.title(f'Observation: {sector_ind}')
+                plt.plot(lc.corrected_lc.time.value, lc.corrected_lc.flux.value, color='k', linewidth=.5)
                 plt.xlabel('Delta Time [Days]')
                 plt.ylabel('Flux [e/s]')
-                plt.text(lc.full_corrected_lightcurve_table['time'][0],
-                         (max(lc.full_corrected_lightcurve_table['flux'])-(range_*0.05)),
+                plt.text(lc.corrected_lc.time.value[0], (max(lc.corrected_lc.flux.value)-(range_*0.05)),
                          self.callable, fontsize=14)
 
                 if self.output_path is not None and self.save["figures"]:
                     path = os.path.join(self.output_path, "Figures", "LCs",
-                                        f'{self.callable}_Full_Corrected_LC_Observation_{current_try_sector}.png')
+                                        f'{self.callable}_Full_Corrected_LC_Observation_{sector_ind}.png')
                     plt.savefig(path, format='png', bbox_inches="tight")
                 plt.close(fig)
 
-                self.lc_lens.append(len(lc.full_corrected_lightcurve_table))
         if self.no_lk_cache():
             self.clear_cache()
 
@@ -327,76 +321,44 @@ class EnsembleLC:
         output_table : :class:`~astropy.table.Table`
             The full lightcurves output table that was saved
         """
-        LC_PATH = os.path.join(self.output_path, 'Corrected_LCs/',
-                               str(self.callable) + 'output_table.fits')
-        # Test to see if I have already downloaded and corrected this cluster, If I have, read in the data
-        if self.previously_downloaded():
-            output_table = Table.read(LC_PATH, hdu=1)
-            return output_table
-
-        if self.has_tess_data():
-            # This section refers to the Cluster Not Previously Being Downloaded
-            # So Calling function to download and correct data
+        # if data is available and the lightcurves have not yet been calculated
+        if self.has_tess_data() and self.lcs == []:
+            # download and correct lightcurves
             self.get_lcs()
 
             # clear out the cache after we're done making lightcurves
             if self.no_lk_cache:
                 self.clear_cache()
 
-            # Making the Output Table
-            name___ = [self.cluster_name]
-            HTD = [True]
-            OB_use = [self.n_good_obs]
-            OB_av = [self.sectors_available]
-            OB_good = [str(self.which_sectors_good)]
-            OB_fd = [self.n_failed_download]
-            OB_ne = [self.n_near_edge]
-            OB_sl = [self.n_scattered_light]
-            OB_lens = [str((self.lc_lens))]
+        # write out the full file
+        hdr = fits.Header()
+        hdr['name'] = self.cluster_name
+        hdr['location'] = self.location
+        hdr["radius"] = (self.radius, "Radius in degrees")
+        hdr['log_age'] = (self.cluster_age, "Log Age in dex")
+        hdr["has_data"] = (self.sectors_available > 0, "Whether there was TESS data available")
+        hdr["n_obs"] = (self.sectors_available, "How many sectors of observations exist")
+        hdr["n_good"] = (self.n_good_obs, "Number of good observations")
+        hdr["n_dlfail"] = (self.n_failed_download, "Number of failed downloads")
+        hdr["n_edge"] = (self.n_near_edge, "Number of obs near edge")
+        hdr["n_scatt"] = (self.n_scattered_light, "Number of obs with scattered light")
+        empty_primary = fits.PrimaryHDU(header=hdr)
+        hdul = fits.HDUList([empty_primary] + [lc.hdu for lc in self.lcs if lc is not None])
+        if self.output_path is not None:
+            hdul.writeto(os.path.join(self.output_path, 'Corrected_LCs/',
+                         str(self.callable) + 'output_table.fits'), overwrite=True)
 
-            output_table = Table([name___, [self.location], [self.radius], [self.cluster_age], HTD, OB_av,
-                                    OB_use, OB_good, OB_fd, OB_ne, OB_sl, OB_lens],
-                                    names=('Name', 'Location', 'Radius [deg]', 'Log Age', 'Has_TESS_Data',
-                                        'Obs_Available', 'Num_Good_Obs', 'Which_Obs_Good',
-                                        'Obs_DL_Failed', 'Obs_Near_Edge_S1', 'Obs_Scattered_Light',
-                                        'Light_Curve_Lengths'))
-
-            # Writing out the data, so I never have to Download and Correct again
-            if self.output_path is not None and self.save["lcs"]:
-                output_table.write(LC_PATH)
-
-            if self.n_good_obs != 0 and self.output_path is not None and self.save["lcs"]:
-                # now I'm going to read in the lightcurves and attach them to the output table to have all data in one place
-                for i in range(output_table['Num_Good_Obs'][0]):
-                    light_curve_table = Table.read(LC_PATH.replace("output_table", ""), hdu=i + 1)
-                    light_curve_table.write(LC_PATH, append=True)
-
-                return output_table
-
-        else:
-            # This Means that there is no TESS coverage for the Cluster (Easiest to check)
-            name___= [self.cluster_name]       
-            HTD=[False]  
-            OB_use= np.ma.array([0], mask=[1])
-            OB_good= np.ma.array([0], mask=[1])
-            OB_av= np.ma.array([0], mask=[1])
-            OB_fd= np.ma.array([0], mask=[1])
-            OB_ne= np.ma.array([0], mask=[1])
-            OB_sl= np.ma.array([0], mask=[1])  
-            OB_lens= np.ma.array([0], mask=[1])
-
-            output_table = Table([name___, [self.location], [self.radius], [self.cluster_age], HTD, OB_av,
-                                OB_use, [str(OB_good)], OB_fd, OB_ne, OB_sl, [str(OB_lens)]],
-                                names=('Name', 'Location', 'Radius [deg]', 'Log Age', 'Has_TESS_Data',
-                                        'Obs_Available', 'Num_Good_Obs', 'Which_Obs_Good', 'Obs_DL_Failed',
-                                        'Obs_Near_Edge_S1', 'Obs_Scattered_Light', 'Light_Curve_Lengths'))
-
-            if self.output_path is not None and self.save["lcs"]:
-                output_table.write(LC_PATH, overwrite=True)
-            return output_table
+        # return a simple summary table that can be stacked with other clusters
+        return Table({'name': [self.cluster_name], 'location': [self.location], 'radius': [self.radius],
+                      'log_age': [self.cluster_age], 'has_data': [self.sectors_available > 0],
+                      'n_obs': [self.sectors_available], 'n_good_obs': [self.n_good_obs],
+                      'n_failed_download': [self.n_failed_download], 'n_near_edge': [self.n_near_edge],
+                      'n_scatter_light': [self.n_scattered_light],
+                      'lc_lens': [[len(lc.corrected_lc) for lc in self.lcs if lc is not None]],
+                      'which_sectors_good': [[lc.sector for lc in self.lcs if lc is not None]]})
 
     def access_lightcurve(self, observation):
-        """Function to access downloaded and corrected sector lightcurved 
+        """Function to access downloaded and corrected sector lightcurved
 
         Parameters
         ----------
@@ -419,7 +381,7 @@ class EnsembleLC:
         output_table = Table.read(path, hdu=1)
 
         # Get the Light Curve
-        if output_table['Num_Good_Obs'] == 1:
+        if output_table['n_good_obs'] == 1:
             light_curve_table = Table.read(path, hdu=2)
         else:
             light_curve_table = Table.read(path, hdu=(int(observation)+2))
@@ -438,3 +400,30 @@ class EnsembleLC:
         plt.close(fig)
 
         return fig, light_curve_table
+
+
+def from_fits(filepath, existing_class=None, **kwargs):
+    # if an existing class is not provided then create a new blank one
+    if existing_class is None:
+        new_ecl = EnsembleLC(cluster_name="", radius=None, cluster_age=None, output_path=None, **kwargs)
+    else:
+        new_ecl = existing_class
+
+    # open up the fits file and load in the information
+    with fits.open(filepath) as hdul:
+        details = hdul[0]
+        new_ecl.cluster_name = details.header["name"]
+        new_ecl.location = details.header["location"]
+        new_ecl.callable = new_ecl.cluster_name if new_ecl.cluster_name is not None else new_ecl.location
+        new_ecl.radius = details.header["radius"]
+        new_ecl.cluster_age = details.header["log_age"]
+        new_ecl.sectors_available = details.header["n_obs"]
+        new_ecl.n_good_obs = details.header["n_good"]
+        new_ecl.n_failed_download = details.header["n_dlfail"]
+        new_ecl.n_near_edge = details.header["n_edge"]
+        new_ecl.n_scattered_light = details.header["n_scatt"]
+
+        new_ecl.lcs = [SimpleCorrectedLightcurve(fits_path=filepath, hdu_index=hdu_ind)
+                       for hdu_ind in range(1, len(hdul))]
+
+    return new_ecl
