@@ -15,7 +15,7 @@ from .lightcurve import SimpleCorrectedLightcurve, TESSCutLightcurve
 class EnsembleLC:
     def __init__(self, radius, cluster_age, output_path="./", cluster_name=None, location=None,
                  percentile=80, cutout_size=99, scattered_light_frequency=5, n_pca=6, verbose=False,
-                 no_lk_cache=False, debug=False):
+                 no_lk_cache=False, ignore_previous_downloads=False, debug=False):
         """Class for generating lightcurves from TESS cutouts
 
         Parameters
@@ -46,6 +46,8 @@ class EnsembleLC:
         no_lk_cache : `bool`, optional
             Whether to skip using the LightKurve cache and scrub downloads instead (can be useful for runs
             on a computing cluster with limited memory space), by default False
+        ignore_previous_downloads : `bool`, optional
+            Whether to ignore previously downloaded and corrected lightcurves            
         debug : `bool`, optional
             #TODO DELETE THIS, by default False
         """
@@ -111,6 +113,10 @@ class EnsembleLC:
         self.verbose = verbose
         self.no_lk_cache = no_lk_cache
         self.debug = debug
+
+        if self.output_path is not None and self.previously_downloaded() and not ignore_previous_downloads:
+            self = from_fits(os.path.join(self.output_path, "Corrected_LCs",
+                                          self.callable + "output_table.fits"), existing_class=self)
 
         # We are also going to document how many observations failed each one of our quality tests
         self.n_failed_download = 0
@@ -317,16 +323,10 @@ class EnsembleLC:
         """
         LC_PATH = os.path.join(self.output_path, 'Corrected_LCs/',
                                str(self.callable) + 'output_table.fits')
-        # Test to see if I have already downloaded and corrected this cluster, If I have, read in the data
-        # TODO: this won't work right now, switch to giving an option to the user during __init__ to load from
-        # a file and then only re-run if they give a force option or something
-        if self.previously_downloaded():
-            output_table = Table.read(LC_PATH, hdu=1)
-            return output_table
 
-        if self.has_tess_data():
-            # This section refers to the Cluster Not Previously Being Downloaded
-            # So Calling function to download and correct data
+        # if data is available and the lightcurves have not yet been calculated
+        if self.has_tess_data() and self.lcs == []:
+            # download and correct lightcurves
             self.get_lcs()
 
             # clear out the cache after we're done making lightcurves
@@ -347,7 +347,7 @@ class EnsembleLC:
         empty_primary = fits.PrimaryHDU(header=hdr)
         hdul = fits.HDUList([empty_primary] + [lc.hdu for lc in self.lcs if lc is not None])
         if self.output_path is not None:
-            hdul.writeto(LC_PATH)
+            hdul.writeto(LC_PATH, overwrite=True)
 
     def access_lightcurve(self, observation):
         """Function to access downloaded and corrected sector lightcurved 
@@ -394,8 +394,14 @@ class EnsembleLC:
         return fig, light_curve_table
 
 
-def from_fits(filepath, **kwargs):
-    new_ecl = EnsembleLC(cluster_name="", radius=None, cluster_age=None, output_path=None, **kwargs)
+def from_fits(filepath, existing_class=None, **kwargs):
+    # if an existing class is not provided then create a new blank one
+    if existing_class is None:
+        new_ecl = EnsembleLC(cluster_name="", radius=None, cluster_age=None, output_path=None, **kwargs)
+    else:
+        new_ecl = existing_class
+
+    # open up the fits file and load in the information
     with fits.open(filepath) as hdul:
         details = hdul[0]
         new_ecl.cluster_name = details.header["name"]

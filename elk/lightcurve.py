@@ -26,6 +26,17 @@ class SimpleCorrectedLightcurve():
             self.corrected_lc = lk.LightCurve(time=time, flux=flux, flux_err=flux_err)
             self.sector = sector
 
+        self.hdu = fits.BinTableHDU.from_columns(
+            [fits.Column(name='time', format='D', array=self.corrected_lc.time.value),
+             fits.Column(name='flux', format='D', array=self.corrected_lc.flux.value),
+             fits.Column(name='flux_err', format='D', array=self.corrected_lc.flux_err.value),
+             fits.Column(name='mag', format='D', array=flux_to_mag(self.corrected_lc.flux.value)),
+             fits.Column(name='mag_err', format='D',
+                         array=flux_err_to_mag_err(self.corrected_lc.flux.value,
+                                                   self.corrected_lc.flux_err.value))]
+        )
+        self.hdu.header.set('sector', self.sector)
+
 
 class TESSCutLightcurve(SimpleCorrectedLightcurve):
     def __init__(self, radius, lk_search_result=None, tpfs=None,
