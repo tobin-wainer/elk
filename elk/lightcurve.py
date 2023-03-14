@@ -1,8 +1,11 @@
 import numpy as np
 import astropy.units as u
 from astropy.table import Table
+from astropy.io import fits
 import lightkurve as lk
 from tqdm import tqdm
+
+from .utils import flux_to_mag, flux_err_to_mag_err
 
 TESS_RESOLUTION = 21 * u.arcsec / u.pixel
 
@@ -35,6 +38,10 @@ class TESSCutLightcurve():
         if self._tpfs is None:
             self._tpfs = self.lk_search_results.download(cutout_size=(self.cutout_size, self.cutout_size))
         return self._tpfs
+
+    @property
+    def sector(self):
+        return self.tpfs.sector
 
     @property
     def quality_tpfs(self):
@@ -75,7 +82,6 @@ class TESSCutLightcurve():
         return (pix - self.cutout_size // 2)**2 + (pix - self.cutout_size // 2)**2 < radius_in_pixels**2
 
     def correct_lc(self):
-        # TODO: Tom wants to ask Tobin about this max_frame stuff
         # Time average of the pixels in the TPF:
         max_frame = self.quality_tpfs.flux.value.max(axis=0)
 
@@ -146,12 +152,18 @@ class TESSCutLightcurve():
         # TODO: actually use these other lightcurves
         # scattered_light_model_corrected_lightcurve=(self.quality_tpfs - scattered_light[:, None, None]).to_lightcurve(aperture_mask=self.star_mask)
         # systematics_model_corrected_lightcurve=(self.quality_tpfs - systematics_model).to_lightcurve(aperture_mask=self.star_mask)
-        full_corrected_lightcurve = (self.quality_tpfs - full_model).to_lightcurve(aperture_mask=self.star_mask)
+        self.corrected_lc = (self.quality_tpfs - full_model).to_lightcurve(aperture_mask=self.star_mask)
 
-        self.full_corrected_lightcurve_table = Table([full_corrected_lightcurve.time.value,
-                                                      full_corrected_lightcurve.flux.value,
-                                                      full_corrected_lightcurve.flux_err.value],
-                                                     names=('time', 'flux', 'flux_err'))
+        self.hdu = fits.BinTableHDU.from_columns(
+            [fits.Column(name='time', format='D', array=self.corrected_lc.time.value),
+             fits.Column(name='flux', format='D', array=self.corrected_lc.flux.value),
+             fits.Column(name='flux_err', format='D', array=self.corrected_lc.flux_err.value),
+             fits.Column(name='mag', format='D', array=flux_to_mag(self.corrected_lc.flux.value)),
+             fits.Column(name='mag_err', format='D',
+                         array=flux_err_to_mag_err(self.corrected_lc.flux.value,
+                                                   self.corrected_lc.flux_err.value)]
+        )
+        hdu.header.set('sector', self.sector)
 
     def correct_pixel(self, i, j):
         # create a lightcurve for just this pixel
