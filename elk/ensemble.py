@@ -73,6 +73,7 @@ class EnsembleLC:
             if create_it == "" or create_it.lower() == "y":
                 # create the folder
                 os.mkdir(output_path)
+                os.mkdir(os.path.join(output_path, 'temp'))
             else:
                 output_path = None
 
@@ -138,7 +139,9 @@ class EnsembleLC:
     def downloadable(self, ind):
         # use a Try statement to see if we can download the cluster data
         try:
-            tpfs = self.tess_search_results[ind].download(cutout_size=(self.cutout_size, self.cutout_size))
+            download_dir = os.path.join(self.output_path, 'temp') if self.no_cache else None
+            tpfs = self.tess_search_results[ind].download(cutout_size=(self.cutout_size, self.cutout_size),
+                                                          download_dir=download_dir)
         except lk.search.SearchError:
             tpfs = None
         return tpfs
