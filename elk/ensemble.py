@@ -73,9 +73,13 @@ class EnsembleLC:
             if create_it == "" or create_it.lower() == "y":
                 # create the folder
                 os.mkdir(output_path)
-                os.mkdir(os.path.join(output_path, 'cache'))
             else:
                 output_path = None
+
+        # if we wan't to avoid the lk cache we shall need our own dummy
+        if no_lk_cache and not os.path.exists(os.path.join(output_path, 'cache')):
+            os.mkdir(os.path.join(output_path, 'cache'))
+            os.mkdir(os.path.join(output_path, 'cache', 'tesscut'))
 
         # check subfolders
         self.save = {"lcs": False, "figures": False}
