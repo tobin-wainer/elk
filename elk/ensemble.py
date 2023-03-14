@@ -354,8 +354,8 @@ class EnsembleLC:
                       'n_obs': [self.sectors_available], 'n_good_obs': [self.n_good_obs],
                       'n_failed_download': [self.n_failed_download], 'n_near_edge': [self.n_near_edge],
                       'n_scatter_light': [self.n_scattered_light],
-                      'lc_lens': [[len(lc.corrected_lc) for lc in self.lcs]],
-                      'which_sectors_good': [[lc.sector for lc in self.lcs]]})
+                      'lc_lens': [[len(lc.corrected_lc) for lc in self.lcs if lc is not None]],
+                      'which_sectors_good': [[lc.sector for lc in self.lcs if lc is not None]]})
 
     def access_lightcurve(self, observation):
         """Function to access downloaded and corrected sector lightcurved
