@@ -161,9 +161,10 @@ class TESSCutLightcurve():
              fits.Column(name='mag', format='D', array=flux_to_mag(self.corrected_lc.flux.value)),
              fits.Column(name='mag_err', format='D',
                          array=flux_err_to_mag_err(self.corrected_lc.flux.value,
-                                                   self.corrected_lc.flux_err.value)]
+                                                   self.corrected_lc.flux_err.value))]
         )
-        hdu.header.set('sector', self.sector)
+        self.hdu.header.set('sector', self.sector)
+        # TODO: add a output option on a per lightcurve basis
 
     def correct_pixel(self, i, j):
         # create a lightcurve for just this pixel
