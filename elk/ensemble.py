@@ -66,7 +66,7 @@ class EnsembleLC:
                 cluster_age = np.log10(cluster_age.to(u.yr).value)
 
         # check main output folder
-        if not os.path.exists(output_path):
+        if output_path is not None and not os.path.exists(output_path):
             print(f"WARNING: There is no output folder at the path that you supplied ({output_path})")
             create_it = input(("  Would you like me to create it for you? "
                                "(If not then no files will be saved) [Y/n]"))
