@@ -15,7 +15,7 @@ from .utils import flux_to_mag, flux_err_to_mag_err
 class EnsembleLC:
     def __init__(self, radius, cluster_age, output_path="./", cluster_name=None, location=None,
                  percentile=80, cutout_size=99, scattered_light_frequency=5, n_pca=6, verbose=False,
-                 debug=False):
+                 no_lk_cache=False, debug=False):
         """Class for generating lightcurves from TESS cutouts
 
         Parameters
@@ -43,6 +43,9 @@ class EnsembleLC:
             Number of principle components to use in the DesignMatrix, by default 6
         verbose : `bool`, optional
             Whether to print out information and progress bars, by default False
+        no_lk_cache : `bool`, optional
+            Whether to skip using the LightKurve cache and scrub downloads instead (can be useful for runs
+            on a computing cluster with limited memory space), by default False
         debug : `bool`, optional
             #TODO DELETE THIS, by default False
         """
@@ -73,6 +76,11 @@ class EnsembleLC:
             else:
                 output_path = None
 
+        # if we wan't to avoid the lk cache we shall need our own dummy
+        if no_lk_cache and not os.path.exists(os.path.join(output_path, 'cache')):
+            os.mkdir(os.path.join(output_path, 'cache'))
+            os.mkdir(os.path.join(output_path, 'cache', 'tesscut'))
+
         # check subfolders
         self.save = {"lcs": False, "figures": False}
         if output_path is not None:
@@ -100,6 +108,7 @@ class EnsembleLC:
         self.scattered_light_frequency = scattered_light_frequency
         self.n_pca = n_pca
         self.verbose = verbose
+        self.no_lk_cache = no_lk_cache
         self.debug = debug
 
     def __repr__(self):
@@ -134,10 +143,18 @@ class EnsembleLC:
     def downloadable(self, ind):
         # use a Try statement to see if we can download the cluster data
         try:
-            tpfs = self.tess_search_results[ind].download(cutout_size=(self.cutout_size, self.cutout_size))
+            download_dir = os.path.join(self.output_path, 'cache') if self.no_lk_cache else None
+            tpfs = self.tess_search_results[ind].download(cutout_size=(self.cutout_size, self.cutout_size),
+                                                          download_dir=download_dir)
         except lk.search.SearchError:
             tpfs = None
         return tpfs
+
+    def clear_cache(self):
+        """Clear the folder containing manually cached lightkurve files"""
+        for file in os.listdir(os.path.join(self.output_path, 'cache', 'tesscut')):
+            if file.endswith(".fits"):
+                os.remove(os.path.join(self.output_path, 'cache', 'tesscut', file))
 
     def scattered_light(self, quality_tpfs, full_model_Normalized):
         if self.debug:
@@ -217,6 +234,10 @@ class EnsembleLC:
             if self.verbose:
                 print(f"Starting Quality Tests for Observation: {current_try_sector}")
 
+            # if we are avoiding caching then delete every fits file in the cache folder
+            if self.no_lk_cache:
+                self.clear_cache()
+
             # First is the Download Test
             tpfs = self.downloadable(current_try_sector)
             if (tpfs is None) & (current_try_sector + 1 < self.sectors_available):
@@ -295,6 +316,8 @@ class EnsembleLC:
                 plt.close(fig)
 
                 self.lc_lens.append(len(lc.full_corrected_lightcurve_table))
+        if self.no_lk_cache():
+            self.clear_cache()
 
     def lightcurves_summary_file(self):
         """Generate lightcurve output files for the cluster and save them in `self.output_path`
@@ -315,6 +338,10 @@ class EnsembleLC:
             # This section refers to the Cluster Not Previously Being Downloaded
             # So Calling function to download and correct data
             self.get_lcs()
+
+            # clear out the cache after we're done making lightcurves
+            if self.no_lk_cache:
+                self.clear_cache()
 
             # Making the Output Table
             name___ = [self.cluster_name]
