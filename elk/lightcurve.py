@@ -1,6 +1,5 @@
 import numpy as np
 import astropy.units as u
-from astropy.table import Table
 from astropy.io import fits
 import lightkurve as lk
 from tqdm import tqdm
@@ -19,19 +18,14 @@ class SimpleCorrectedLightcurve():
         if has_file:
             with fits.open(fits_path) as hdul:
                 hdu = hdul[hdu_index]
-                self.corrected_lc = Table({
-                    "time": hdu.data["time"] * u.day,
-                    "flux": hdu.data["flux"] * u.electron / u.s,
-                    "flux_err": hdu.data["flux_err"] * u.electron / u.s
-                })
+                self.corrected_lc = lk.LightCurve(time=hdu.data["time"] * u.day,
+                                                  flux=hdu.data["flux"] * u.electron / u.s,
+                                                  flux_err=hdu.data["flux_err"] * u.electron / u.s)
                 self.sector = hdu.header["sector"]
         else:
-            self.corrected_lc = Table({
-                "time": time,
-                "flux": flux,
-                "flux_err": flux_err
-            })
+            self.corrected_lc = lk.LightCurve(time=time, flux=flux, flux_err=flux_err)
             self.sector = sector
+
 
 class TESSCutLightcurve(SimpleCorrectedLightcurve):
     def __init__(self, radius, lk_search_result=None, tpfs=None,
