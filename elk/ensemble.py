@@ -15,7 +15,7 @@ from .utils import flux_to_mag, flux_err_to_mag_err
 class EnsembleLC:
     def __init__(self, radius, cluster_age, output_path="./", cluster_name=None, location=None,
                  percentile=80, cutout_size=99, scattered_light_frequency=5, n_pca=6, verbose=False,
-                 debug=False):
+                 no_cache=False, debug=False):
         """Class for generating lightcurves from TESS cutouts
 
         Parameters
@@ -43,6 +43,9 @@ class EnsembleLC:
             Number of principle components to use in the DesignMatrix, by default 6
         verbose : `bool`, optional
             Whether to print out information and progress bars, by default False
+        no_cache : `bool`, optional
+            Whether to skip using the LightKurve cache and scrub downloads instead (can be useful for runs
+            on a computing cluster with limited memory space), by default False
         debug : `bool`, optional
             #TODO DELETE THIS, by default False
         """
@@ -100,6 +103,7 @@ class EnsembleLC:
         self.scattered_light_frequency = scattered_light_frequency
         self.n_pca = n_pca
         self.verbose = verbose
+        self.no_cache = no_cache
         self.debug = debug
 
     def __repr__(self):
