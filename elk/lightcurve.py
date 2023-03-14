@@ -20,9 +20,9 @@ class SimpleCorrectedLightcurve():
             with fits.open(fits_path) as hdul:
                 hdu = hdul[hdu_index]
                 self.corrected_lc = Table({
-                    "time": hdu["time"] * u.day,
-                    "flux": hdu["flux"] * u.electron / u.s,
-                    "flux_err": hdu["flux_err"] * u.electron / u.s
+                    "time": hdu.data["time"] * u.day,
+                    "flux": hdu.data["flux"] * u.electron / u.s,
+                    "flux_err": hdu.data["flux_err"] * u.electron / u.s
                 })
                 self.sector = hdu.header["sector"]
         else:

@@ -400,7 +400,7 @@ def from_fits(filepath, **kwargs):
         new_ecl.location = details.header["Location"]
         new_ecl.callable = new_ecl.cluster_name if new_ecl.cluster_name is not None else new_ecl.location
         new_ecl.radius = details.header["Radius [deg]"]
-        new_ecl.cluster_age = details.header["Log_Age"]
+        new_ecl.cluster_age = details.header["Log Age"]
         new_ecl.sectors_available = details.header["n_obs_available"]
         new_ecl.n_good_obs = details.header["n_good_obs"]
         new_ecl.n_failed_download = details.header["n_failed_download"]
