@@ -3,6 +3,7 @@ import lightkurve as lk
 import matplotlib.pyplot as plt
 import scipy
 from astropy.table import Table, Column, join, vstack
+from astropy.io import fits
 import astropy.units as u
 
 import os.path
@@ -110,6 +111,12 @@ class EnsembleLC:
         self.verbose = verbose
         self.no_lk_cache = no_lk_cache
         self.debug = debug
+
+        # We are also going to document how many observations failed each one of our quality tests
+        self.n_failed_download = 0
+        self.n_near_edge = 0
+        self.n_scattered_light = 0
+        self.n_good_obs = 0
 
     def __repr__(self):
         return f"<{self.__class__.__name__} - {self.callable}>"
@@ -221,13 +228,6 @@ class EnsembleLC:
         lc_Lens : :class:`~numpy.ndarray`
             The length of each lightcurve
         """
-        # We are also going to document how many observations failed each one of our quality tests
-        self.n_failed_download = 0
-        self.n_near_edge = 0
-        self.n_scattered_light = 0
-        self.n_good_obs = 0
-        self.which_sectors_good = []
-        self.lc_lens = []
         self.lcs = [None for _ in range(self.sectors_available)]
 
         # start iterating through the observations
@@ -286,7 +286,6 @@ class EnsembleLC:
                 if self.verbose:
                     print(sector_ind, "Passed Quality Tests")
                 self.n_good_obs += 1
-                self.which_sectors_good.append(sector_ind)
                 self.lcs[sector_ind] = lc
 
                 # Now I am going to save a plot of the light curve to go visually inspect later
@@ -305,7 +304,6 @@ class EnsembleLC:
                     plt.savefig(path, format='png', bbox_inches="tight")
                 plt.close(fig)
 
-                self.lc_lens.append(len(lc.corrected_lc))
         if self.no_lk_cache():
             self.clear_cache()
 
@@ -333,57 +331,23 @@ class EnsembleLC:
             if self.no_lk_cache:
                 self.clear_cache()
 
-            # Making the Output Table
-            name___ = [self.cluster_name]
-            HTD = [True]
-            OB_use = [self.n_good_obs]
-            OB_av = [self.sectors_available]
-            OB_good = [str(self.which_sectors_good)]
-            OB_fd = [self.n_failed_download]
-            OB_ne = [self.n_near_edge]
-            OB_sl = [self.n_scattered_light]
-            OB_lens = [str((self.lc_lens))]
+        hdr = fits.Header()
+        hdr['Name'] = self.cluster_name
+        hdr['Location'] = self.location
+        hdr["Radius [deg]"] = self.radius
+        hdr['Log Age'] = self.cluster_age
+        hdr["Has_TESS_Data"] = self.sectors_available > 0
+        hdr["n_obs_available"] = self.sectors_available
+        hdr["n_good_obs"] = self.n_good_obs
+        hdr["n_failed_download"] = self.n_failed_download
+        hdr["n_near_edge"] = self.n_near_edge
+        hdr["n_scattered_light"] = self.n_scattered_light
+        empty_primary = fits.PrimaryHDU(header=hdr)
+        hdul = fits.HDUList([empty_primary] + [lc.hdu for lc in self.lcs if lc is not None])
+        if self.output_path is not None:
+            hdul.writeto(LC_PATH)
 
-            output_table = Table([name___, [self.location], [self.radius], [self.cluster_age], HTD, OB_av,
-                                    OB_use, OB_good, OB_fd, OB_ne, OB_sl, OB_lens],
-                                    names=('Name', 'Location', 'Radius [deg]', 'Log Age', 'Has_TESS_Data',
-                                        'Obs_Available', 'Num_Good_Obs', 'Which_Obs_Good',
-                                        'Obs_DL_Failed', 'Obs_Near_Edge_S1', 'Obs_Scattered_Light',
-                                        'Light_Curve_Lengths'))
-
-            # Writing out the data, so I never have to Download and Correct again
-            if self.output_path is not None and self.save["lcs"]:
-                output_table.write(LC_PATH)
-
-            if self.n_good_obs != 0 and self.output_path is not None and self.save["lcs"]:
-                # now I'm going to read in the lightcurves and attach them to the output table to have all data in one place
-                for i in range(output_table['Num_Good_Obs'][0]):
-                    light_curve_table = Table.read(LC_PATH.replace("output_table", ""), hdu=i + 1)
-                    light_curve_table.write(LC_PATH, append=True)
-
-                return output_table
-
-        else:
-            # This Means that there is no TESS coverage for the Cluster (Easiest to check)
-            name___= [self.cluster_name]       
-            HTD=[False]  
-            OB_use= np.ma.array([0], mask=[1])
-            OB_good= np.ma.array([0], mask=[1])
-            OB_av= np.ma.array([0], mask=[1])
-            OB_fd= np.ma.array([0], mask=[1])
-            OB_ne= np.ma.array([0], mask=[1])
-            OB_sl= np.ma.array([0], mask=[1])  
-            OB_lens= np.ma.array([0], mask=[1])
-
-            output_table = Table([name___, [self.location], [self.radius], [self.cluster_age], HTD, OB_av,
-                                OB_use, [str(OB_good)], OB_fd, OB_ne, OB_sl, [str(OB_lens)]],
-                                names=('Name', 'Location', 'Radius [deg]', 'Log Age', 'Has_TESS_Data',
-                                        'Obs_Available', 'Num_Good_Obs', 'Which_Obs_Good', 'Obs_DL_Failed',
-                                        'Obs_Near_Edge_S1', 'Obs_Scattered_Light', 'Light_Curve_Lengths'))
-
-            if self.output_path is not None and self.save["lcs"]:
-                output_table.write(LC_PATH, overwrite=True)
-            return output_table
+        return hdul
 
     def access_lightcurve(self, observation):
         """Function to access downloaded and corrected sector lightcurved 
