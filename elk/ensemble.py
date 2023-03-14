@@ -339,6 +339,10 @@ class EnsembleLC:
             # So Calling function to download and correct data
             self.get_lcs()
 
+            # clear out the cache after we're done making lightcurves
+            if self.no_lk_cache:
+                self.clear_cache()
+
             # Making the Output Table
             name___ = [self.cluster_name]
             HTD = [True]
