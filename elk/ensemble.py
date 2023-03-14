@@ -321,9 +321,6 @@ class EnsembleLC:
         output_table : :class:`~astropy.table.Table`
             The full lightcurves output table that was saved
         """
-        LC_PATH = os.path.join(self.output_path, 'Corrected_LCs/',
-                               str(self.callable) + 'output_table.fits')
-
         # if data is available and the lightcurves have not yet been calculated
         if self.has_tess_data() and self.lcs == []:
             # download and correct lightcurves
@@ -333,6 +330,7 @@ class EnsembleLC:
             if self.no_lk_cache:
                 self.clear_cache()
 
+        # write out the full file
         hdr = fits.Header()
         hdr['name'] = self.cluster_name
         hdr['location'] = self.location
@@ -347,10 +345,20 @@ class EnsembleLC:
         empty_primary = fits.PrimaryHDU(header=hdr)
         hdul = fits.HDUList([empty_primary] + [lc.hdu for lc in self.lcs if lc is not None])
         if self.output_path is not None:
-            hdul.writeto(LC_PATH, overwrite=True)
+            hdul.writeto(os.path.join(self.output_path, 'Corrected_LCs/',
+                         str(self.callable) + 'output_table.fits'), overwrite=True)
+
+        # return a simple summary table that can be stacked with other clusters
+        return Table({'name': [self.cluster_name], 'location': [self.location], 'radius': [self.radius],
+                      'log_age': [self.cluster_age], 'has_data': [self.sectors_available > 0],
+                      'n_obs': [self.sectors_available], 'n_good_obs': [self.n_good_obs],
+                      'n_failed_download': [self.n_failed_download], 'n_near_edge': [self.n_near_edge],
+                      'n_scatter_light': [self.n_scattered_light],
+                      'lc_lens': [[len(lc.corrected_lc) for lc in self.lcs]],
+                      'which_sectors_good': [[lc.sector for lc in self.lcs]]})
 
     def access_lightcurve(self, observation):
-        """Function to access downloaded and corrected sector lightcurved 
+        """Function to access downloaded and corrected sector lightcurved
 
         Parameters
         ----------

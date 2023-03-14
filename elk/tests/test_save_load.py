@@ -11,7 +11,7 @@ c = elk.ensemble.EnsembleLC(output_path="../../output",
                verbose=True,
                no_lk_cache=True)
 
-c.lightcurves_summary_file()
+print(c.lightcurves_summary_file())
 
 del c
 
