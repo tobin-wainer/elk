@@ -10,7 +10,30 @@ from .utils import flux_to_mag, flux_err_to_mag_err
 TESS_RESOLUTION = 21 * u.arcsec / u.pixel
 
 
-class TESSCutLightcurve():
+class SimpleCorrectedLightcurve():
+    def __init__(self, time=None, flux=None, flux_err=None, sector=None, fits_path=None, hdu_index=None):
+        has_data = time is not None and flux is not None and flux_err is not None and sector is not None
+        has_file = fits_path is not None and hdu_index is not None
+        assert has_data or has_file, "Must either provide data or a fits file and HDU index"
+
+        if has_file:
+            with fits.open(fits_path) as hdul:
+                hdu = hdul[hdu_index]
+                self.corrected_lc = Table({
+                    "time": hdu["time"] * u.day,
+                    "flux": hdu["flux"] * u.electron / u.s,
+                    "flux_err": hdu["flux_err"] * u.electron / u.s
+                })
+                self.sector = hdu.header["sector"]
+        else:
+            self.corrected_lc = Table({
+                "time": time,
+                "flux": flux,
+                "flux_err": flux_err
+            })
+            self.sector = sector
+
+class TESSCutLightcurve(SimpleCorrectedLightcurve):
     def __init__(self, radius, lk_search_result=None, tpfs=None,
                  cutout_size=99, percentile=80, n_pca=6, progress_bar=False):
 

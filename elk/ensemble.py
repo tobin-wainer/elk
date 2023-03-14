@@ -9,7 +9,7 @@ import astropy.units as u
 import os.path
 import gc
 
-from .lightcurve import TESSCutLightcurve
+from .lightcurve import SimpleCorrectedLightcurve, TESSCutLightcurve
 
 
 class EnsembleLC:
@@ -289,13 +289,13 @@ class EnsembleLC:
                 self.lcs[sector_ind] = lc
 
                 # Now I am going to save a plot of the light curve to go visually inspect later
-                range_ = max(lc.corrected_lc['flux']) - min(lc.corrected_lc['flux'])
+                range_ = max(lc.corrected_lc.flux.value) - min(lc.corrected_lc.flux.value)
                 fig = plt.figure()
                 plt.title(f'Observation: {sector_ind}')
-                plt.plot(lc.corrected_lc['time'], lc.corrected_lc['flux'], color='k', linewidth=.5)
+                plt.plot(lc.corrected_lc.time.value, lc.corrected_lc.flux.value, color='k', linewidth=.5)
                 plt.xlabel('Delta Time [Days]')
                 plt.ylabel('Flux [e/s]')
-                plt.text(lc.corrected_lc['time'][0], (max(lc.corrected_lc['flux'])-(range_*0.05)),
+                plt.text(lc.corrected_lc.time.value[0], (max(lc.corrected_lc.flux.value)-(range_*0.05)),
                          self.callable, fontsize=14)
 
                 if self.output_path is not None and self.save["figures"]:
@@ -347,8 +347,6 @@ class EnsembleLC:
         if self.output_path is not None:
             hdul.writeto(LC_PATH)
 
-        return hdul
-
     def access_lightcurve(self, observation):
         """Function to access downloaded and corrected sector lightcurved 
 
@@ -373,7 +371,7 @@ class EnsembleLC:
         output_table = Table.read(path, hdu=1)
 
         # Get the Light Curve
-        if output_table['Num_Good_Obs'] == 1:
+        if output_table['n_good_obs'] == 1:
             light_curve_table = Table.read(path, hdu=2)
         else:
             light_curve_table = Table.read(path, hdu=(int(observation)+2))
@@ -392,3 +390,24 @@ class EnsembleLC:
         plt.close(fig)
 
         return fig, light_curve_table
+
+
+def from_fits(filepath, **kwargs):
+    new_ecl = EnsembleLC(cluster_name="", radius=None, cluster_age=None, output_path=None, **kwargs)
+    with fits.open(filepath) as hdul:
+        details = hdul[0]
+        new_ecl.cluster_name = details.header["Name"]
+        new_ecl.location = details.header["Location"]
+        new_ecl.callable = new_ecl.cluster_name if new_ecl.cluster_name is not None else new_ecl.location
+        new_ecl.radius = details.header["Radius [deg]"]
+        new_ecl.cluster_age = details.header["Log_Age"]
+        new_ecl.sectors_available = details.header["n_obs_available"]
+        new_ecl.n_good_obs = details.header["n_good_obs"]
+        new_ecl.n_failed_download = details.header["n_failed_download"]
+        new_ecl.n_near_edge = details.header["n_near_edge"]
+        new_ecl.n_scattered_light = details.header["n_scattered_light"]
+
+        new_ecl.lcs = [SimpleCorrectedLightcurve(fits_path=filepath, hdu_index=hdu_ind)
+                       for hdu_ind in range(1, len(hdul))]
+
+    return new_ecl
