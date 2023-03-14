@@ -9,7 +9,6 @@ import os.path
 import gc
 
 from .lightcurve import TESSCutLightcurve
-from .utils import flux_to_mag, flux_err_to_mag_err
 
 
 class EnsembleLC:
@@ -97,6 +96,7 @@ class EnsembleLC:
                 else:
                     self.save[key] = True
 
+        self.lcs = []
         self.output_path = output_path
         self.radius = radius
         self.cluster_age = cluster_age
@@ -228,24 +228,25 @@ class EnsembleLC:
         self.n_good_obs = 0
         self.which_sectors_good = []
         self.lc_lens = []
+        self.lcs = [None for _ in range(self.sectors_available)]
 
         # start iterating through the observations
-        for current_try_sector in range(self.sectors_available):
+        for sector_ind in range(self.sectors_available):
             if self.verbose:
-                print(f"Starting Quality Tests for Observation: {current_try_sector}")
+                print(f"Starting Quality Tests for Observation: {sector_ind}")
 
             # if we are avoiding caching then delete every fits file in the cache folder
             if self.no_lk_cache:
                 self.clear_cache()
 
             # First is the Download Test
-            tpfs = self.downloadable(current_try_sector)
-            if (tpfs is None) & (current_try_sector + 1 < self.sectors_available):
+            tpfs = self.downloadable(sector_ind)
+            if (tpfs is None) & (sector_ind + 1 < self.sectors_available):
                 if self.verbose:
                     print('Failed Download')
                 self.n_failed_download += 1
                 continue
-            elif (tpfs is None) & (current_try_sector + 1 == self.sectors_available):
+            elif (tpfs is None) & (sector_ind + 1 == self.sectors_available):
                 if self.verbose:
                     print('Failed Download')
                 self.n_failed_download += 1
@@ -256,12 +257,12 @@ class EnsembleLC:
 
             # Now Edge Test
             near_edge = lc.near_edge()
-            if near_edge & (current_try_sector + 1 < self.sectors_available):
+            if near_edge & (sector_ind + 1 < self.sectors_available):
                 if self.verbose:
                     print('Failed Near Edge Test')
                 self.n_near_edge += 1
                 continue
-            if near_edge & (current_try_sector + 1 == self.sectors_available):
+            if near_edge & (sector_ind + 1 == self.sectors_available):
                 if self.verbose:
                     print('Failed Near Edge Test')
                 self.n_near_edge += 1
@@ -270,26 +271,22 @@ class EnsembleLC:
             lc.correct_lc()
 
             scattered_light_test = self.scattered_light(lc.quality_tpfs, lc.full_model_normalized)
-            if scattered_light_test & (current_try_sector + 1 < self.sectors_available):
+            if scattered_light_test & (sector_ind + 1 < self.sectors_available):
                 if self.verbose:
                     print("Failed Scattered Light Test")
                 self.n_scattered_light += 1
                 continue
-            if scattered_light_test & (current_try_sector + 1 == self.sectors_available):
+            if scattered_light_test & (sector_ind + 1 == self.sectors_available):
                 if self.verbose:
                     print("Failed Scattered Light Test")
                 self.n_scattered_light += 1
                 return
             else:
                 if self.verbose:
-                    print(current_try_sector, "Passed Quality Tests")
+                    print(sector_ind, "Passed Quality Tests")
                 self.n_good_obs += 1
-                self.which_sectors_good.append(current_try_sector)
+                self.which_sectors_good.append(sector_ind)
                 # This Else Statement means that the Lightcurve is good and has passed our quality checks
-
-                # Writing out the data, so I never have to Download and Correct again, but only if there is data
-                lc.full_corrected_lightcurve_table.add_column(Column(flux_to_mag(lc.full_corrected_lightcurve_table['flux'])), name='mag')
-                lc.full_corrected_lightcurve_table.add_column(Column(flux_err_to_mag_err(lc.full_corrected_lightcurve_table['flux'], lc.full_corrected_lightcurve_table['flux_err'])), name='mag_err')
 
                 if self.output_path is not None and self.save["lcs"]:
                     lc.full_corrected_lightcurve_table.write(os.path.join(self.output_path,
@@ -300,7 +297,7 @@ class EnsembleLC:
                 # Now I am going to save a plot of the light curve to go visually inspect later
                 range_ = max(lc.full_corrected_lightcurve_table['flux']) - min(lc.full_corrected_lightcurve_table['flux'])
                 fig = plt.figure()
-                plt.title(f'Observation: {current_try_sector}')
+                plt.title(f'Observation: {sector_ind}')
                 plt.plot(lc.full_corrected_lightcurve_table['time'], lc.full_corrected_lightcurve_table['flux'],
                          color='k', linewidth=.5)
                 plt.xlabel('Delta Time [Days]')
@@ -311,7 +308,7 @@ class EnsembleLC:
 
                 if self.output_path is not None and self.save["figures"]:
                     path = os.path.join(self.output_path, "Figures", "LCs",
-                                        f'{self.callable}_Full_Corrected_LC_Observation_{current_try_sector}.png')
+                                        f'{self.callable}_Full_Corrected_LC_Observation_{sector_ind}.png')
                     plt.savefig(path, format='png', bbox_inches="tight")
                 plt.close(fig)
 
