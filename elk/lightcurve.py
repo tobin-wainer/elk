@@ -45,6 +45,7 @@ class SimpleCorrectedLightcurve():
         self.hdu.header.set('sector', self.sector)
 
         self.stats = {}
+        self.periodogram_frequencies = None
 
     @property
     def normalized_flux(self):
@@ -112,9 +113,22 @@ class SimpleCorrectedLightcurve():
         return Table(table_dict)
 
     def plot(self, title="auto", **kwargs):
-        title = f'Lightcure for Sector: {self.sector}' if title == "auto" else title
+        title = f'Lightcurve for Sector {self.sector}' if title == "auto" else title
         return elkplot.plot_lightcurve(self.corrected_lc.time.value, self.corrected_lc.flux.value,
                                        title=title, **kwargs)
+
+    def plot_periodogram(self, frequencies=None, title="auto", **kwargs):
+        if self.periodogram_frequencies is None and frequencies is None:
+            raise ValueError(("Must either provide an array of frequencies or have already calculated the "
+                              "periodogram using `.to_periodogram()`"))
+        elif self.periodogram_frequencies is None:
+            self.to_periodogram(frequencies=frequencies)
+
+        title = f'Periodogram for Sector {self.sector}' if title == "auto" else title
+        return elkplot.plot_periodogram(frequencies=self.periodogram_frequencies, power=self.periodogram,
+                                        power_percentiles=self.periodogram_percentiles,
+                                        peak_freqs=self.stats["peak_freqs"][:self.stats["n_peaks"]],
+                                        title=title, **kwargs)
 
 
 class TESSCutLightcurve(SimpleCorrectedLightcurve):
