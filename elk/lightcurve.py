@@ -4,6 +4,7 @@ from astropy.io import fits
 from astropy.table import Table
 import lightkurve as lk
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 from .utils import flux_to_mag, flux_err_to_mag_err
 import elk.plot as elkplot
@@ -138,6 +139,20 @@ class SimpleCorrectedLightcurve():
         title = f'Autocorrelation function for Sector {self.sector}' if title == "auto" else title
         return elkplot.plot_acf(time=self.ac_time, acf=self.acf, acf_percentiles=self.acf_percentiles,
                                 title=title, **kwargs)
+
+    def analysis_plot(self, name=None, run_all=False, show=True):
+        if run_all:
+            self.get_stats_using_defaults()
+
+        fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+
+        plt.suptitle(f'{name} (Sector {self.sector})', fontsize="xx-large")
+
+        self.plot(fig=fig, ax=axes[0], show=False, title="Lightcurve")
+        self.plot_periodogram(fig=fig, ax=axes[1], show=False, title="Periodogram")
+        self.plot_acf(fig=fig, ax=axes[2], show=show, title="Autocorrelation function")
+
+        return fig, axes
 
 
 class TESSCutLightcurve(SimpleCorrectedLightcurve):
