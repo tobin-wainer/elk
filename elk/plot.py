@@ -101,7 +101,7 @@ def plot_acf(time, acf, acf_percentiles=None, title=None, fig=None, ax=None, sho
     """
     # create figure if necessary and add title
     if fig is None or ax is None:
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(10, 5))
     ax.set_title(title)
 
     # shade percentiles if desired
