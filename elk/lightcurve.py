@@ -97,7 +97,15 @@ class SimpleCorrectedLightcurve():
         self.stats.update(acf_stats)
         return r
 
-    def get_stats_table(self, name):
+    def get_stats_using_defaults(self):
+        (self.rms, self.std, self.MAD,
+            self.von_neumann_ratio, self.J_stetson(),
+            self.to_periodogram(frequencies=np.arange(0.04, 11, 0.01)), self.to_acf())
+        return self.stats
+
+    def get_stats_table(self, name, run_all=False):
+        if run_all:
+            self.get_stats_using_defaults()
         table_dict = {"name": [name]}
         for k, v in self.stats.items():
             table_dict[k] = [v]
