@@ -5,7 +5,8 @@ import lightkurve as lk
 from tqdm import tqdm
 
 from .utils import flux_to_mag, flux_err_to_mag_err
-from .plot import plot_lightcurve
+import elk.plot as elkplot
+import elk.stats as elkstats
 
 
 __all__ = ["SimpleCorrectedLightcurve", "TESSCutLightcurve"]
@@ -42,9 +43,52 @@ class SimpleCorrectedLightcurve():
         )
         self.hdu.header.set('sector', self.sector)
 
-    def plot(self, **kwargs):
-        return plot_lightcurve(self.corrected_lc.time.value, self.corrected_lc.flux.value,
-                               title=f'Sector: {self.sector}', **kwargs)
+        self.stats = {}
+
+    @property
+    def normalized_flux(self):
+        return self.corrected_lc.flux.value / np.median(self.corrected_lc.flux.value)
+
+    @property
+    def MAD(self):
+        self.stats["MAD"] = elkstats.get_MAD(self.normalized_flux)
+        return self.stats["MAD"]
+
+    @property
+    def skewness(self):
+        self.stats["skewness"] = elkstats.get_skewness(self.corrected_lc.flux.value)
+        return self.stats["skewness"]
+
+    @property
+    def von_neumann_ratio(self):
+        self.stats["von_neumann_ratio"] = elkstats.von_neumann_ratio(self.normalized_flux)
+        return self.stats["von_neumann_ratio"]
+
+    def J_stetson(self, **kwargs):
+        mag_err = flux_err_to_mag_err(self.corrected_lc.flux.value, self.corrected_lc.flux_err.value)
+        self.stats["J_Stetson"] = elkstats.J_stetson(time=self.corrected_lc.time.value,
+                                                     mag=flux_to_mag(self.corrected_lc.flux.value),
+                                                     mag_err=mag_err, **kwargs)
+        return self.stats["J_Stetson"]
+
+    def to_periodogram(self, frequencies, **kwargs):
+        self.periodogram, self.periodogram_percentiles,\
+            lsp_stats = elkstats.periodogram(self.corrected_lc.time.value, self.corrected_lc.flux.value,
+                                             self.corrected_lc.flux_err.value, frequencies=frequencies,
+                                             **kwargs)
+        self.periodogram_frequencies = frequencies
+        self.stats["periodogram"] = lsp_stats
+        return self.periodogram, self.periodogram_percentiles, self.stats["periodogram"]
+
+    def to_acf(self, **kwargs):
+        r = elkstats.autocorr(time=self.corrected_lc.time.value, flux=self.corrected_lc.flux.value, **kwargs)
+        self.ac_time, self.acf, self.acf_percentiles, self.stats["acf"] = r[:4]
+        return r
+
+    def plot(self, title="auto", **kwargs):
+        title = f'Lightcure for Sector: {self.sector}' if title == "auto" else title
+        return elkplot.plot_lightcurve(self.corrected_lc.time.value, self.corrected_lc.flux.value,
+                                       title=title, **kwargs)
 
 
 class TESSCutLightcurve(SimpleCorrectedLightcurve):
