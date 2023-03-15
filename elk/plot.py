@@ -2,6 +2,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+__all__ = ["plot_periodogram", "plot_acf"]
+
+
 def plot_periodogram(frequencies, power, power_percentiles, peak_freqs,
                      fig=None, ax=None, show=True, title=None, save_path=None):
     """Plot a periodogram

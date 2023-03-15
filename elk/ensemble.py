@@ -2,7 +2,7 @@ import numpy as np
 import lightkurve as lk
 import matplotlib.pyplot as plt
 import scipy
-from astropy.table import Table, Column, join, vstack
+from astropy.table import Table
 from astropy.io import fits
 import astropy.units as u
 
@@ -10,6 +10,8 @@ import os.path
 import gc
 
 from .lightcurve import SimpleCorrectedLightcurve, TESSCutLightcurve
+
+__all__ = ["EnsembleLC", "from_fits"]
 
 
 class EnsembleLC:
