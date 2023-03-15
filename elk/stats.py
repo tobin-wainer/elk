@@ -128,7 +128,7 @@ def J_stetson(time, mag, mag_err, pair_threshold=0.021):
     return J
 
 
-def periodogram(time, flux, flux_err, frequencies, n_bootstrap=1000, max_peaks=25, freq_thresh=5):
+def periodogram(time, flux, flux_err, frequencies, n_bootstrap=100, max_peaks=25, freq_thresh=5):
     """Generate a bootstrapped Lomb-Scargle periodogram and various associated statistics
 
     Parameters
@@ -142,7 +142,7 @@ def periodogram(time, flux, flux_err, frequencies, n_bootstrap=1000, max_peaks=2
     frequencies : :class:`~numpy.ndarray`
         Frequencies at which to evaluate the periodogram
     n_bootstrap : `int`, optional
-        How many bootstraps to perform, by default 1000
+        How many bootstraps to perform, by default 100
     max_peaks : `int`, optional
         Fixed number of max peaks to return, by default 25. If None is given then the number of peaks that
         exist will be returned rather than truncated/padded to this fixed number.
