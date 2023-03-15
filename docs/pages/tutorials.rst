@@ -6,4 +6,4 @@ Tutorials
    :maxdepth: 0
    :titlesonly:
 
-   ../tutorials/getting_started.ipynb
+   ../tutorials/example_tutorial.ipynb
