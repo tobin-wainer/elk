@@ -11,13 +11,13 @@ import elk.plot as elkplot
 import elk.stats as elkstats
 
 
-__all__ = ["SimpleCorrectedLightcurve", "TESSCutLightcurve"]
+__all__ = ["BasicLightcurve", "TESSCutLightcurve"]
 
 
 TESS_RESOLUTION = 21 * u.arcsec / u.pixel
 
 
-class SimpleCorrectedLightcurve():
+class BasicLightcurve():
     def __init__(self, time=None, flux=None, flux_err=None, sector=None, fits_path=None, hdu_index=None):
         has_data = time is not None and flux is not None and flux_err is not None and sector is not None
         has_file = fits_path is not None and hdu_index is not None
@@ -155,7 +155,7 @@ class SimpleCorrectedLightcurve():
         return fig, axes
 
 
-class TESSCutLightcurve(SimpleCorrectedLightcurve):
+class TESSCutLightcurve(BasicLightcurve):
     def __init__(self, radius, lk_search_result=None, tpfs=None,
                  cutout_size=99, percentile=80, n_pca=6, progress_bar=False):
 

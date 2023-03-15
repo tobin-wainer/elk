@@ -9,7 +9,7 @@ import astropy.units as u
 import os.path
 import gc
 
-from .lightcurve import SimpleCorrectedLightcurve, TESSCutLightcurve
+from .lightcurve import BasicLightcurve, TESSCutLightcurve
 
 __all__ = ["EnsembleLC", "from_fits"]
 
@@ -380,7 +380,7 @@ def from_fits(filepath, existing_class=None, **kwargs):
         new_ecl.n_near_edge = details.header["n_edge"]
         new_ecl.n_scattered_light = details.header["n_scatt"]
 
-        new_ecl.lcs = [SimpleCorrectedLightcurve(fits_path=filepath, hdu_index=hdu_ind)
+        new_ecl.lcs = [BasicLightcurve(fits_path=filepath, hdu_index=hdu_ind)
                        for hdu_ind in range(1, len(hdul))]
 
     return new_ecl
