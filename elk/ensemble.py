@@ -296,6 +296,12 @@ class EnsembleLC:
                 self.n_good_obs += 1
                 self.lcs[sector_ind] = lc
 
+                # save the lightcurve for later in case of crashes
+                empty_primary = fits.PrimaryHDU()
+                hdul = fits.HDUList([empty_primary, lc.hdu])
+                hdul.writeto(os.path.join(self.output_path, "Corrected_LCs",
+                                          self.callable + f"_lc_{lc.sector}.fits"))
+
                 # Now I am going to save a plot of the light curve to go visually inspect later
                 range_ = max(lc.corrected_lc.flux.value) - min(lc.corrected_lc.flux.value)
                 fig = plt.figure()
