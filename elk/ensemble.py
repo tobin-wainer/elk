@@ -302,21 +302,14 @@ class EnsembleLC:
                 hdul.writeto(os.path.join(self.output_path, "Corrected_LCs",
                                           self.callable + f"_lc_{lc.sector}.fits"))
 
-                # Now I am going to save a plot of the light curve to go visually inspect later
-                range_ = max(lc.corrected_lc.flux.value) - min(lc.corrected_lc.flux.value)
-                fig = plt.figure()
-                plt.title(f'Observation: {sector_ind}')
-                plt.plot(lc.corrected_lc.time.value, lc.corrected_lc.flux.value, color='k', linewidth=.5)
-                plt.xlabel('Delta Time [Days]')
-                plt.ylabel('Flux [e/s]')
-                plt.text(lc.corrected_lc.time.value[0], (max(lc.corrected_lc.flux.value)-(range_*0.05)),
-                         self.callable, fontsize=14)
-
+                # save a plot of the light curve to visually inspect later
                 if self.output_path is not None and self.save["figures"]:
+                    _, ax = lc.plot(show=False)
+                    ax.annotate(self.callable, xy=(0.98, 0.98), xycoords="axes fraction",
+                                ha="right", va="top", fontsize="large")
                     path = os.path.join(self.output_path, "Figures", "LCs",
                                         f'{self.callable}_Full_Corrected_LC_Observation_{sector_ind}.png')
                     plt.savefig(path, format='png', bbox_inches="tight")
-                plt.close(fig)
 
         if self.no_lk_cache():
             self.clear_cache()
@@ -364,50 +357,6 @@ class EnsembleLC:
                       'n_scatter_light': [self.n_scattered_light],
                       'lc_lens': [[len(lc.corrected_lc) for lc in self.lcs if lc is not None]],
                       'which_sectors_good': [[lc.sector for lc in self.lcs if lc is not None]]})
-
-    def access_lightcurve(self, observation):
-        """Function to access downloaded and corrected sector lightcurved
-
-        Parameters
-        ----------
-        observation : 'int'
-            This is the number of the observation you wish to access the lightcurve for. 
-            For example, if there were 4 observations available and 3 good observations, and you wish to 
-            access the 2nd good observation, you would set observation to 2.
-
-        Returns
-        -------
-        figure, table
-            This will return a figure of the lightcurve for the given observation, as well as the light curve
-            in table form.
-        """
-        path = os.path.join(self.output_path, 'Corrected_LCs', self.callable + 'output_table.fits')
-        if not os.path.exists(path):
-            print(("WARNING: The Lightcurve has not been downloaded/corrected. "
-                   "Please run 'lightcurves_summary_file()' function for this cluster."))
-            return None, None
-        output_table = Table.read(path, hdu=1)
-
-        # Get the Light Curve
-        if output_table['n_good_obs'] == 1:
-            light_curve_table = Table.read(path, hdu=2)
-        else:
-            light_curve_table = Table.read(path, hdu=(int(observation)+2))
-
-        # Now I am going to save a plot of the light curve to go visually inspect later
-        range_ = max(light_curve_table['flux']) - min(light_curve_table['flux'])
-        fig = plt.figure()
-        plt.title(f'Observation: {observation}')
-        plt.plot(light_curve_table['time'], light_curve_table['flux'], color='k', linewidth=.5)
-        plt.xlabel('Delta Time [Days]')
-        plt.ylabel('Flux [e/s]')
-        plt.text(light_curve_table['time'][0], (max(light_curve_table['flux'])-(range_*0.05)),
-                 self.cluster_name, fontsize=14)
-
-        plt.show()
-        plt.close(fig)
-
-        return fig, light_curve_table
 
 
 def from_fits(filepath, existing_class=None, **kwargs):
