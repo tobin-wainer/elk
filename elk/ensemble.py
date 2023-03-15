@@ -297,10 +297,11 @@ class EnsembleLC:
                 self.lcs[sector_ind] = lc
 
                 # save the lightcurve for later in case of crashes
-                empty_primary = fits.PrimaryHDU()
-                hdul = fits.HDUList([empty_primary, lc.hdu])
-                hdul.writeto(os.path.join(self.output_path, "Corrected_LCs",
-                                          self.callable + f"_lc_{lc.sector}.fits"))
+                if self.output_path is not None:
+                    empty_primary = fits.PrimaryHDU()
+                    hdul = fits.HDUList([empty_primary, lc.hdu])
+                    hdul.writeto(os.path.join(self.output_path, "Corrected_LCs",
+                                              self.callable + f"_lc_{lc.sector}.fits"))
 
                 # save a plot of the light curve to visually inspect later
                 if self.output_path is not None and self.save["figures"]:
