@@ -163,3 +163,4 @@ cython_debug/
 # ignore outputs
 output/
 *.npy
+docs/api/
