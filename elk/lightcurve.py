@@ -5,6 +5,7 @@ import lightkurve as lk
 from tqdm import tqdm
 
 from .utils import flux_to_mag, flux_err_to_mag_err
+from .plot import plot_lightcurve
 
 
 __all__ = ["SimpleCorrectedLightcurve", "TESSCutLightcurve"]
@@ -40,6 +41,10 @@ class SimpleCorrectedLightcurve():
                                                    self.corrected_lc.flux_err.value))]
         )
         self.hdu.header.set('sector', self.sector)
+
+    def plot(self, **kwargs):
+        return plot_lightcurve(self.corrected_lc.time.value, self.corrected_lc.flux.value,
+                               title=f'Sector: {self.sector}', **kwargs)
 
 
 class TESSCutLightcurve(SimpleCorrectedLightcurve):
