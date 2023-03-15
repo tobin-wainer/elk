@@ -5,7 +5,7 @@ Ensemble Lightcurves (``ensemble``)
 Introduction
 ============
 
-Blah blah
+TODO add intro about module
 
 API
 ===

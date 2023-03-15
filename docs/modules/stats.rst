@@ -5,7 +5,7 @@ Variability Statistics (``stats``)
 Introduction
 ============
 
-Blah blah
+TODO add intro about module
 
 API
 ===

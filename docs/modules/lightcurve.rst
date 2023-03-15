@@ -5,7 +5,7 @@ Lightcurve investigation (``lightcurve``)
 Introduction
 ============
 
-Blah blah
+TODO add intro about module
 
 API
 ===

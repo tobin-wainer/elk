@@ -5,7 +5,7 @@ Visualisation (``plot``)
 Introduction
 ============
 
-Blah blah
+TODO add intro about module
 
 API
 ===

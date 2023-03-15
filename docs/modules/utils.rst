@@ -5,7 +5,7 @@ Utility Functions (``utils``)
 Introduction
 ============
 
-Blah blah
+TODO add intro about module
 
 API
 ===
