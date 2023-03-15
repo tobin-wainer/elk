@@ -300,6 +300,7 @@ class BasicLightcurve():
 
         fig, axes = plt.subplots(1, 3, figsize=(30, 5))
 
+        name = "Lightcurve Analysis Plot" if name is None else name
         plt.suptitle(f'{name} (Sector {self.sector})', fontsize="xx-large")
 
         self.plot(fig=fig, ax=axes[0], show=False, title="Lightcurve")
