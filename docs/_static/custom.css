@@ -35,12 +35,6 @@ a.copybtn > img {
 .o-tooltip--left:hover:after {
     transition-delay: 0.2s;
 }
-.navbar-brand img {
-   height: 60px;
-}
-.navbar-brand {
-   height: 75px;
-}
 
 pre, code {
   font-size: 100%;
