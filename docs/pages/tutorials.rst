@@ -7,3 +7,4 @@ Tutorials
    :titlesonly:
 
    ../tutorials/example_tutorial.ipynb
+   ../tutorials/statistics.ipynb
