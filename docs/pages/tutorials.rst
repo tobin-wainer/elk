@@ -6,4 +6,5 @@ Tutorials
    :maxdepth: 0
    :titlesonly:
 
-   ../tutorials/example_tutorial.ipynb
+   ../tutorials/statistics.ipynb
+   ../tutorials/plotting.ipynb
