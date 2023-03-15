@@ -1,5 +1,7 @@
 import numpy as np
 
+__all__ = ["flux_to_mag", "flux_err_to_mag_err"]
+
 
 def flux_to_mag(flux):
     """Converts flux to TESS Magnitudes

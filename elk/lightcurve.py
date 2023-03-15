@@ -6,6 +6,10 @@ from tqdm import tqdm
 
 from .utils import flux_to_mag, flux_err_to_mag_err
 
+
+__all__ = ["SimpleCorrectedLightcurve", "TESSCutLightcurve"]
+
+
 TESS_RESOLUTION = 21 * u.arcsec / u.pixel
 
 
