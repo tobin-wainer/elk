@@ -271,7 +271,6 @@ class TESSCutLightcurve(SimpleCorrectedLightcurve):
                                                    self.corrected_lc.flux_err.value))]
         )
         self.hdu.header.set('sector', self.sector)
-        # TODO: add a output option on a per lightcurve basis
 
     def correct_pixel(self, i, j):
         # create a lightcurve for just this pixel
