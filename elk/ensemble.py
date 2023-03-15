@@ -354,10 +354,10 @@ class EnsembleLC:
         return Table({'name': [self.cluster_name], 'location': [self.location], 'radius': [self.radius],
                       'log_age': [self.cluster_age], 'has_data': [self.sectors_available > 0],
                       'n_obs': [self.sectors_available], 'n_good_obs': [self.n_good_obs],
+                      'which_sectors_good': [[lc.sector for lc in self.lcs if lc is not None]],
                       'n_failed_download': [self.n_failed_download], 'n_near_edge': [self.n_near_edge],
                       'n_scatter_light': [self.n_scattered_light],
-                      'lc_lens': [[len(lc.corrected_lc) for lc in self.lcs if lc is not None]],
-                      'which_sectors_good': [[lc.sector for lc in self.lcs if lc is not None]]})
+                      'lc_lens': [[len(lc.corrected_lc) for lc in self.lcs if lc is not None]]})
 
 
 def from_fits(filepath, existing_class=None, **kwargs):
