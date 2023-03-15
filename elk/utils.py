@@ -8,13 +8,13 @@ def flux_to_mag(flux):
 
     Parameters
     ----------
-    flux : class: `~numpy.ndarray` or `float`
+    flux : :class:`~numpy.ndarray` or `float`
         flux in terms of ergs/s 
 
     Returns
     -------
-    mag : class: `~numpy.ndarray` or `float` 
-        TESS Magnitude centered in the I band 
+    mag : :class:`~numpy.ndarray` or `float`
+        TESS Magnitude centered in the I band
     """
     m1 = 10     # calibration mag
     f1 = 15000  # Calibration Flux corresponding to the calibration mag
