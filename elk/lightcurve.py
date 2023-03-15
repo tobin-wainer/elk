@@ -1,6 +1,7 @@
 import numpy as np
 import astropy.units as u
 from astropy.io import fits
+from astropy.table import Table
 import lightkurve as lk
 from tqdm import tqdm
 
@@ -50,6 +51,16 @@ class SimpleCorrectedLightcurve():
         return self.corrected_lc.flux.value / np.median(self.corrected_lc.flux.value)
 
     @property
+    def rms(self):
+        self.stats["rms"] = np.sqrt(np.mean(self.normalized_flux**2))
+        return self.stats["rms"]
+
+    @property
+    def std(self):
+        self.stats["std"] = np.std(self.normalized_flux)
+        return self.stats["std"]
+
+    @property
     def MAD(self):
         self.stats["MAD"] = elkstats.get_MAD(self.normalized_flux)
         return self.stats["MAD"]
@@ -77,13 +88,20 @@ class SimpleCorrectedLightcurve():
                                              self.corrected_lc.flux_err.value, frequencies=frequencies,
                                              **kwargs)
         self.periodogram_frequencies = frequencies
-        self.stats["periodogram"] = lsp_stats
-        return self.periodogram, self.periodogram_percentiles, self.stats["periodogram"]
+        self.stats.update(lsp_stats)
+        return self.periodogram, self.periodogram_percentiles, lsp_stats
 
     def to_acf(self, **kwargs):
         r = elkstats.autocorr(time=self.corrected_lc.time.value, flux=self.corrected_lc.flux.value, **kwargs)
-        self.ac_time, self.acf, self.acf_percentiles, self.stats["acf"] = r[:4]
+        self.ac_time, self.acf, self.acf_percentiles, acf_stats = r[:4]
+        self.stats.update(acf_stats)
         return r
+
+    def get_stats_table(self, name):
+        table_dict = {"name": [name]}
+        for k, v in self.stats.items():
+            table_dict[k] = [v]
+        return Table(table_dict)
 
     def plot(self, title="auto", **kwargs):
         title = f'Lightcure for Sector: {self.sector}' if title == "auto" else title
