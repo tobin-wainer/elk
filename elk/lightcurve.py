@@ -352,6 +352,11 @@ class TESSCutLightcurve(BasicLightcurve):
         self._quality_lc = None
         self._uncorrected_lc = None
 
+        # prep some class variables for the stats helper functions
+        self.stats = {}
+        self.periodogram_frequencies = None
+        self.ac_time = None
+
     @property
     def tpfs(self):
         """All target pixel files for the lightcurve"""
