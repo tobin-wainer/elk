@@ -7,7 +7,9 @@ c = EnsembleLC(output_path="../../output",
                radius=.046,
                cluster_age=7.75,
                cutout_size=10,
-               debug=True)
+               debug=True,
+               verbose=True,
+               no_lk_cache=True)
 
 c.lightcurves_summary_file()
 c.access_lightcurve(1)
