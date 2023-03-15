@@ -124,6 +124,36 @@ def plot_acf(time, acf, acf_percentiles=None, title=None, fig=None, ax=None, sho
 
 def plot_lightcurve(time, flux, title=None, fig=None, ax=None, show=True, save_path=None,
                     color='k', linewidth=0.5, **kwargs):
+    """Plot a lightcurve
+
+    Parameters
+    ----------
+    time : :class:`~numpy.ndarray`
+        Times of observations
+    flux : :class:`~numpy.ndarray`
+        Flux of each observation
+    title : `str`, optional
+        A title for the plot, by default None
+    fig : :class:`~matplotlib.pyplot.Figure`, optional
+        Figure on which to plot, if either `fig` or `ax` is None then new ones are created, by default None
+    ax : :class:`~matplotlib.pyplot.AxesSubplot`, optional
+        Axis on which to plot, if either `fig` or `ax` is None then new ones are created, by default None
+    show : bool, optional
+        Whether to show the plot, by default True
+    save_path : `str`, optional
+        Where to save the plot, if None then plot is not saved, by default None
+    color : `str`, optional
+        Colour to use for the lightcurve line, by default 'k'
+    linewidth : `float`, optional
+        Linewidth for the lightcurve, by default 0.5
+    **kwargs
+        Keyword arguments to pass to the plotting of the lightcurve line
+
+    Returns
+    -------
+    fig, ax : :class:`~matplotlib.pyplot.Figure`, :class:`~matplotlib.pyplot.AxesSubplot`
+        Figure and axis on which the lightcurve has been plotted
+    """
     # create figure if necessary and add title
     if fig is None or ax is None:
         fig, ax = plt.subplots()
