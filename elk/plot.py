@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-__all__ = ["plot_periodogram", "plot_acf"]
+__all__ = ["plot_periodogram", "plot_acf", "plot_lightcurve"]
 
 
 def plot_periodogram(frequencies, power, power_percentiles, peak_freqs,
