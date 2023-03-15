@@ -173,7 +173,7 @@ class BasicLightcurve():
         stats : `dict`
             A dictionary of the various statistics (also stored in ``self.stats``)
         """
-        (self.rms, self.std, self.MAD,
+        (self.rms, self.std, self.MAD, self.skewness,
             self.von_neumann_ratio, self.J_stetson(),
             self.to_periodogram(frequencies=np.arange(0.04, 11, 0.01)), self.to_acf())
         return self.stats
