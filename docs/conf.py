@@ -55,6 +55,7 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx_copybutton',
     'sphinx.ext.linkcode',
+    'sphinx.ext.graphviz'
 ]
 
 
@@ -96,8 +97,8 @@ html_theme = 'pydata_sphinx_theme'
 html_theme_options = {
     "logo": {
         "link": "index",
-        "image_light": "gala_invite_light.png",
-        "image_dark": "gala_invite_dark.png",
+        "image_light": "logo_nowords_green.png",
+        "image_dark": "logo_nowords_green.png",
     },
     "icon_links": [
         {
@@ -106,8 +107,7 @@ html_theme_options = {
             "icon": "fab fa-github-square",
         },
     ],
-    "footer_items": ["copyright", "last-updated"],
-    "page_sidebar_items": [],
+    "footer_start": ["copyright", "last-updated"],
 }
 
 html_last_updated_fmt = "%Y %b %d at %H:%M:%S UTC"
