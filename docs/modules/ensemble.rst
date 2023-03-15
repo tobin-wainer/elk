@@ -11,3 +11,4 @@ API
 ===
 
 .. automodapi:: elk.ensemble
+    :no-inheritance-diagram:

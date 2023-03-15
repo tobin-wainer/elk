@@ -11,3 +11,4 @@ API
 ===
 
 .. automodapi:: elk.lightcurve
+    :no-inheritance-diagram:
