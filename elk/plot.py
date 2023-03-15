@@ -72,7 +72,7 @@ def plot_periodogram(frequencies, power, power_percentiles, peak_freqs,
     return fig, ax
 
 
-def plot_acf(time, acf, acf_percentiles=None, title=None, fig=None, ax=None, show=False, save_path=None):
+def plot_acf(time, acf, acf_percentiles=None, title=None, fig=None, ax=None, show=True, save_path=None):
     """Plot an autocorrelation function
 
     Parameters

@@ -46,6 +46,7 @@ class SimpleCorrectedLightcurve():
 
         self.stats = {}
         self.periodogram_frequencies = None
+        self.ac_time = None
 
     @property
     def normalized_flux(self):
@@ -129,6 +130,14 @@ class SimpleCorrectedLightcurve():
                                         power_percentiles=self.periodogram_percentiles,
                                         peak_freqs=self.stats["peak_freqs"][:self.stats["n_peaks"]],
                                         title=title, **kwargs)
+
+    def plot_acf(self, title="auto", **kwargs):
+        if self.ac_time is None:
+            self.to_acf()
+
+        title = f'Autocorrelation function for Sector {self.sector}' if title == "auto" else title
+        return elkplot.plot_acf(time=self.ac_time, acf=self.acf, acf_percentiles=self.acf_percentiles,
+                                title=title, **kwargs)
 
 
 class TESSCutLightcurve(SimpleCorrectedLightcurve):
