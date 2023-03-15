@@ -19,10 +19,32 @@ TESS_RESOLUTION = 21 * u.arcsec / u.pixel
 
 class BasicLightcurve():
     def __init__(self, time=None, flux=None, flux_err=None, sector=None, fits_path=None, hdu_index=None):
+        """A basic lightcurve class for calculating statistics of corrected lightcurves and plotting them.
+
+        This class can either be instantiated manually using time, flux and flux_err values, or loaded in from
+        a fits file that has previously been created.
+
+        Parameters
+        ----------
+        time : :class:`~numpy.ndarray`, optional
+            Time of observations, by default None
+        flux : :class:`~numpy.ndarray`, optional
+            Flux from each observations, by default None
+        flux_err : :class:`~numpy.ndarray`, optional
+            Errors on the flux, by default None
+        sector : `int`, optional
+            TESS sector in which observations were taken, by default None
+        fits_path : `str`, optional
+            Path to a fits file containing the lightcurve, by default None
+        hdu_index : `int`, optional
+            Index of the HDU containing the lightcurve, by default None
+        """
+        # check that either data or a file has been given
         has_data = time is not None and flux is not None and flux_err is not None and sector is not None
         has_file = fits_path is not None and hdu_index is not None
         assert has_data or has_file, "Must either provide data or a fits file and HDU index"
 
+        # if the user has given us a file then load it into the class
         if has_file:
             with fits.open(fits_path) as hdul:
                 hdu = hdul[hdu_index]
@@ -30,10 +52,12 @@ class BasicLightcurve():
                                                   flux=hdu.data["flux"] * u.electron / u.s,
                                                   flux_err=hdu.data["flux_err"] * u.electron / u.s)
                 self.sector = hdu.header["sector"]
+        # otherwise create a lightcurve directly
         else:
             self.corrected_lc = lk.LightCurve(time=time, flux=flux, flux_err=flux_err)
             self.sector = sector
 
+        # set up an HDU for saving lightcurves
         self.hdu = fits.BinTableHDU.from_columns(
             [fits.Column(name='time', format='D', array=self.corrected_lc.time.value),
              fits.Column(name='flux', format='D', array=self.corrected_lc.flux.value),
@@ -45,40 +69,57 @@ class BasicLightcurve():
         )
         self.hdu.header.set('sector', self.sector)
 
+        # prep some class variables for the stats helper functions
         self.stats = {}
         self.periodogram_frequencies = None
         self.ac_time = None
 
     @property
     def normalized_flux(self):
+        """The normalised flux of the lightcurve"""
         return self.corrected_lc.flux.value / np.median(self.corrected_lc.flux.value)
 
     @property
     def rms(self):
+        """The root-mean-squared normalised flux of the lightcurve"""
         self.stats["rms"] = np.sqrt(np.mean(self.normalized_flux**2))
         return self.stats["rms"]
 
     @property
     def std(self):
+        """The standard deviation of the normalised flux of the lightcurve"""
         self.stats["std"] = np.std(self.normalized_flux)
         return self.stats["std"]
 
     @property
     def MAD(self):
+        """The median absolute deviation of the normalised flux of the lightcurve"""
         self.stats["MAD"] = elkstats.get_MAD(self.normalized_flux)
         return self.stats["MAD"]
 
     @property
     def skewness(self):
+        """The skewness of the flux of the lightcurve"""
         self.stats["skewness"] = elkstats.get_skewness(self.corrected_lc.flux.value)
         return self.stats["skewness"]
 
     @property
     def von_neumann_ratio(self):
+        """The Von Neumann ratio for the normalised flux of the lightcurve. See
+        :class:`elk.stats.von_neumann_ratio` for more information"""
         self.stats["von_neumann_ratio"] = elkstats.von_neumann_ratio(self.normalized_flux)
         return self.stats["von_neumann_ratio"]
 
     def J_stetson(self, **kwargs):
+        """Calculate the J Stetson statistic for the lightcurve
+
+        Keyword arguments are passed directly to :class:`elk.stats.J_stetson`
+
+        Returns
+        -------
+        J_Stetson
+            The J Stetson statistic
+        """
         mag_err = flux_err_to_mag_err(self.corrected_lc.flux.value, self.corrected_lc.flux_err.value)
         self.stats["J_Stetson"] = elkstats.J_stetson(time=self.corrected_lc.time.value,
                                                      mag=flux_to_mag(self.corrected_lc.flux.value),
@@ -86,6 +127,19 @@ class BasicLightcurve():
         return self.stats["J_Stetson"]
 
     def to_periodogram(self, frequencies, **kwargs):
+        """Construct a periodogram using the lightcurve
+
+        Parameters
+        ----------
+        frequencies : :class:`numpy.ndarray`
+            Frequencies at which to evaluate the periodogram
+        **kwargs : `various`
+            Keyword arguments to pass to :class:`elk.stats.periodogram`
+
+        Returns
+        -------
+        Same as :class:`elk.stats.periodogram`
+        """
         self.periodogram, self.periodogram_percentiles,\
             lsp_stats = elkstats.periodogram(self.corrected_lc.time.value, self.corrected_lc.flux.value,
                                              self.corrected_lc.flux_err.value, frequencies=frequencies,
@@ -95,18 +149,51 @@ class BasicLightcurve():
         return self.periodogram, self.periodogram_percentiles, lsp_stats
 
     def to_acf(self, **kwargs):
+        """Calculate the autocorrelation function for the lightcurve
+
+        Keyword arguments are passed directly to :class:`elk.stats.autocorr`
+
+        Returns
+        -------
+        Same as :class:`elk.stats.periodogram`
+        """
         r = elkstats.autocorr(time=self.corrected_lc.time.value, flux=self.corrected_lc.flux.value, **kwargs)
         self.ac_time, self.acf, self.acf_percentiles, acf_stats = r[:4]
         self.stats.update(acf_stats)
         return r
 
     def get_stats_using_defaults(self):
+        """Generate all statistics for the lightcurve **using default settings**
+
+        NOTE: This may not be optimal for your use case, be sure to consider each setting! By default we use
+        a list of frequencies generated with ``np.arange(0.04, 11, 0.01)`` for the periodogram.
+
+        Returns
+        -------
+        stats : `dict`
+            A dictionary of the various statistics (also stored in ``self.stats``)
+        """
         (self.rms, self.std, self.MAD,
             self.von_neumann_ratio, self.J_stetson(),
             self.to_periodogram(frequencies=np.arange(0.04, 11, 0.01)), self.to_acf())
         return self.stats
 
     def get_stats_table(self, name, run_all=False):
+        """Create an Astropy Table of the statistics (for aggregation with other lightcurves)
+
+        Parameters
+        ----------
+        name : `str`
+            Identifier for this lightcurve (e.g. name of cluster)
+        run_all : `bool`, optional
+            Whether to run all statistics **using default settings**
+            (see ``.get_stats_using_defaults()``), by default False
+
+        Returns
+        -------
+        stats_table : :class:`~astropy.table.Table`
+            Table of statistics
+        """
         if run_all:
             self.get_stats_using_defaults()
         table_dict = {"name": [name]}
@@ -115,14 +202,47 @@ class BasicLightcurve():
         return Table(table_dict)
 
     def plot(self, title="auto", **kwargs):
+        """Plot the lightcurve
+
+        Parameters
+        ----------
+        title : `str`, optional
+            Title for the plot, by default "auto" (resulting in "Lightcurve for Sector ...")
+        **kwargs: `various`
+            Keyword arguments passed to :class:`elk.plot.plot_lightcurve`
+
+        Returns
+        -------
+        fig, ax : :class:`~matplotlib.pyplot.Figure`, :class:`~matplotlib.pyplot.AxesSubplot`
+            Figure and axis on which the lightcurve has been plotted
+        """
         title = f'Lightcurve for Sector {self.sector}' if title == "auto" else title
         return elkplot.plot_lightcurve(self.corrected_lc.time.value, self.corrected_lc.flux.value,
                                        title=title, **kwargs)
 
     def plot_periodogram(self, frequencies=None, title="auto", **kwargs):
+        """Plot the periodogram for the lightcurve
+
+        Parameters
+        ----------
+        frequencies : :class:`~numpy.ndarray`
+            Frequencies at which periodogram evaluated, if None then periodogram must have already been
+            generated using ``.to_periodogram()``
+        title : `str`, optional
+            Title for the plot, by default "auto" (resulting in "Periodogram for Sector ...")
+        **kwargs: `various`
+            Keyword arguments passed to :class:`elk.plot.plot_periodogram`
+
+        Returns
+        -------
+        fig, ax : :class:`~matplotlib.pyplot.Figure`, :class:`~matplotlib.pyplot.AxesSubplot`
+            Figure and axis on which the periodogram has been plotted
+        """
+        # ensure reasonable input
         if self.periodogram_frequencies is None and frequencies is None:
             raise ValueError(("Must either provide an array of frequencies or have already calculated the "
                               "periodogram using `.to_periodogram()`"))
+        # calculate periodogram if necessary
         elif self.periodogram_frequencies is None:
             self.to_periodogram(frequencies=frequencies)
 
@@ -133,6 +253,20 @@ class BasicLightcurve():
                                         title=title, **kwargs)
 
     def plot_acf(self, title="auto", **kwargs):
+        """Plot the autocorrelation function
+
+        Parameters
+        ----------
+        title : `str`, optional
+            Title for the plot, by default "auto" (resulting in "Autocorrelation function for Sector ...")
+        **kwargs: `various`
+            Keyword arguments passed to :class:`elk.plot.plot_acf`
+
+        Returns
+        -------
+        fig, ax : :class:`~matplotlib.pyplot.Figure`, :class:`~matplotlib.pyplot.AxesSubplot`
+            Figure and axis on which the autocorrelation function has been plotted
+        """
         if self.ac_time is None:
             self.to_acf()
 
@@ -141,10 +275,30 @@ class BasicLightcurve():
                                 title=title, **kwargs)
 
     def analysis_plot(self, name=None, run_all=False, show=True):
+        """Plot a 3-panel plot of the lightcurve for quick analysis
+
+        Plot includes the lightcurve, periodogram and autocorrelation function.
+
+        Parameters
+        ----------
+        name : `str`
+            Identifier for this lightcurve (e.g. name of cluster)
+        run_all : `bool`, optional
+            Whether to run all statistics **using default settings** (see ``.get_stats_using_defaults()``),
+            by default False
+        show : `bool`, optional
+            Whether to immediately show the plot, by default True
+
+        Returns
+        -------
+        fig, axes : :class:`~matplotlib.pyplot.Figure`, :class:`~matplotlib.pyplot.AxesSubplot`
+            Figure and axes on which the analysis has been plotted
+        """
+        # run everything if the user wants to
         if run_all:
             self.get_stats_using_defaults()
 
-        fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+        fig, axes = plt.subplots(1, 3, figsize=(30, 5))
 
         plt.suptitle(f'{name} (Sector {self.sector})', fontsize="xx-large")
 
