@@ -120,3 +120,24 @@ def plot_acf(time, acf, acf_percentiles=None, title=None, fig=None, ax=None, sho
         plt.show()
 
     return fig, ax
+
+
+def plot_lightcurve(time, flux, title=None, fig=None, ax=None, show=True, save_path=None,
+                    color='k', linewidth=0.5, **kwargs):
+    # create figure if necessary and add title
+    if fig is None or ax is None:
+        fig, ax = plt.subplots()
+    ax.set_title(title)
+
+    ax.plot(time, flux, color=color, linewidth=linewidth, **kwargs)
+
+    ax.set_xlabel(r'Time $\rm [days]$')
+    ax.set_ylabel(r'Flux $[e / {\rm s}]$')
+
+    # save and show as desired
+    if save_path is not None:
+        plt.savefig(save_path, format='png', bbox_inches="tight")
+    if show:
+        plt.show()
+
+    return fig, ax
