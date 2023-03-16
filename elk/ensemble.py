@@ -161,7 +161,7 @@ class EnsembleLC:
             download_dir = os.path.join(self.output_path, 'cache') if self.no_lk_cache else None
             tpfs = self.tess_search_results[ind].download(cutout_size=(self.cutout_size, self.cutout_size),
                                                           download_dir=download_dir)
-        except lk.search.SearchError, FileNotFoundError:
+        except (lk.search.SearchError, FileNotFoundError):
             tpfs = None
         return tpfs
 
