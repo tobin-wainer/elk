@@ -10,6 +10,7 @@ import os.path
 import gc
 
 from .lightcurve import BasicLightcurve, TESSCutLightcurve
+from .utils import print_warning, print_failure, print_success
 
 __all__ = ["EnsembleLC", "from_fits"]
 
@@ -74,7 +75,7 @@ class EnsembleLC:
 
         # check main output folder
         if output_path is not None and not os.path.exists(output_path):
-            print(f"WARNING: There is no output folder at the path that you supplied ({output_path})")
+            print_warning(f"There is no output folder at the path that you supplied ({output_path})")
             create_it = input(("  Would you like me to create it for you? "
                                "(If not then no files will be saved) [Y/n]"))
             if create_it == "" or create_it.lower() == "y":
@@ -96,7 +97,7 @@ class EnsembleLC:
             for subpath, key in zip(["Corrected_LCs", os.path.join("Figures", "LCs")], ["lcs", "figures"]):
                 path = os.path.join(output_path, subpath)
                 if not os.path.exists(path):
-                    print(f"WARNING: The necessary subfolder at ({path}) does not exist")
+                    print_warning(f"The necessary subfolder at ({path}) does not exist")
                     create_it = input(("  Would you like me to create it for you? "
                                        "(If not then these files will not be saved) [Y/n]"))
                     if create_it == "" or create_it.lower() == "y":
@@ -260,7 +261,7 @@ class EnsembleLC:
             tpfs = self.downloadable(sector_ind)
             if tpfs is None:
                 if self.verbose:
-                    print('  Failed Download')
+                    print_failure('  Failed Download')
                 self.n_failed_download += 1
                 continue
 
@@ -282,7 +283,7 @@ class EnsembleLC:
             near_edge = lc.near_edge()
             if near_edge:
                 if self.verbose:
-                    print('  Failed Near Edge Test')
+                    print_failure('  Failed Near Edge Test')
                 self.n_near_edge += 1
                 continue
 
@@ -291,13 +292,13 @@ class EnsembleLC:
             scattered_light_test = self.scattered_light(lc.quality_tpfs, lc.full_model_normalized)
             if scattered_light_test:
                 if self.verbose:
-                    print("  Failed Scattered Light Test")
+                    print_failure("  Failed Scattered Light Test")
                 self.n_scattered_light += 1
                 continue
             else:
                 # This Else Statement means that the Lightcurve is good and has passed our quality checks
                 if self.verbose:
-                    print("  Passed Quality Tests")
+                    print_success("  Passed Quality Tests")
                 self.n_good_obs += 1
                 self.lcs[sector_ind] = lc
 
