@@ -303,14 +303,23 @@ class EnsembleLC:
                     hdul.writeto(os.path.join(self.output_path, "Corrected_LCs",
                                               self.callable + f"_lc_{lc.sector}.fits"))
 
-                # save a plot of the light curve to visually inspect later
+                # if the user wants to save figures
                 if self.output_path is not None and self.save["figures"]:
-                    _, ax = lc.plot(show=False)
+                    # save a plot of the light curve to visually inspect later
+                    fig, ax = lc.plot(show=False)
                     ax.annotate(self.callable, xy=(0.98, 0.98), xycoords="axes fraction",
                                 ha="right", va="top", fontsize="large")
                     path = os.path.join(self.output_path, "Figures", "LCs",
                                         f'{self.callable}_Full_Corrected_LC_Observation_{sector_ind}.png')
                     plt.savefig(path, format='png', bbox_inches="tight")
+                    plt.close(fig)
+
+                    # also save a plot of the pixel map to visually inspect later
+                    ax = lc.quality_tpfs.plot(frame=len(lc.quality_tpfs) // 2, aperture_mask=lc.star_mask)
+                    path = os.path.join(self.output_path, "Figures", "LCs",
+                                        f'{self.callable}_pixel_map_observation_{sector_ind}.png')
+                    plt.savefig(path, format='png', bbox_inches="tight")
+                    plt.close(ax.get_figure())
 
         if self.no_lk_cache():
             self.clear_cache()
