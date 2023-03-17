@@ -171,7 +171,7 @@ class EnsembleLC:
                                         'cache', self.callable) if self.no_lk_cache else None
             tpfs = self.tess_search_results[ind].download(cutout_size=(self.cutout_size, self.cutout_size),
                                                           download_dir=download_dir)
-        except lk.search.SearchError:
+        except (lk.search.SearchError, FileNotFoundError):
             tpfs = None
         return tpfs
 
@@ -309,14 +309,23 @@ class EnsembleLC:
                     hdul.writeto(os.path.join(self.output_path, "Corrected_LCs",
                                               self.callable + f"_lc_{lc.sector}.fits"), overwrite=True)
 
-                # save a plot of the light curve to visually inspect later
+                # if the user wants to save figures
                 if self.output_path is not None and self.save["figures"]:
-                    _, ax = lc.plot(show=False)
+                    # save a plot of the light curve to visually inspect later
+                    fig, ax = lc.plot(show=False)
                     ax.annotate(self.callable, xy=(0.98, 0.98), xycoords="axes fraction",
                                 ha="right", va="top", fontsize="large")
                     path = os.path.join(self.output_path, "Figures", "LCs",
                                         f'{self.callable}_Full_Corrected_LC_Observation_{sector_ind}.png')
                     plt.savefig(path, format='png', bbox_inches="tight")
+                    plt.close(fig)
+
+                    # also save a plot of the pixel map to visually inspect later
+                    ax = lc.quality_tpfs.plot(frame=len(lc.quality_tpfs) // 2, aperture_mask=lc.star_mask)
+                    path = os.path.join(self.output_path, "Figures", "LCs",
+                                        f'{self.callable}_flux_map_observation_{sector_ind}.png')
+                    plt.savefig(path, format='png', bbox_inches="tight")
+                    plt.close(ax.get_figure())
 
                 if self.just_one_lc:
                     if self.verbose:
@@ -366,10 +375,10 @@ class EnsembleLC:
         return Table({'name': [self.cluster_name], 'location': [self.location], 'radius': [self.radius],
                       'log_age': [self.cluster_age], 'has_data': [self.sectors_available > 0],
                       'n_obs': [self.sectors_available], 'n_good_obs': [self.n_good_obs],
+                      'which_sectors_good': [[lc.sector for lc in self.lcs if lc is not None]],
                       'n_failed_download': [self.n_failed_download], 'n_near_edge': [self.n_near_edge],
                       'n_scatter_light': [self.n_scattered_light],
-                      'lc_lens': [[len(lc.corrected_lc) for lc in self.lcs if lc is not None]],
-                      'which_sectors_good': [[lc.sector for lc in self.lcs if lc is not None]]})
+                      'lc_lens': [[len(lc.corrected_lc) for lc in self.lcs if lc is not None]]})
 
 
 def from_fits(filepath, existing_class=None, **kwargs):
