@@ -17,7 +17,7 @@ __all__ = ["EnsembleLC", "from_fits"]
 class EnsembleLC:
     def __init__(self, radius, cluster_age, output_path="./", cluster_name=None, location=None,
                  percentile=80, cutout_size=99, scattered_light_frequency=5, n_pca=6, verbose=False,
-                 no_lk_cache=False, ignore_previous_downloads=False, debug=False):
+                 just_one_lc=False, no_lk_cache=False, ignore_previous_downloads=False, debug=False):
         """Class for generating lightcurves from TESS cutouts
 
         Parameters
@@ -45,6 +45,8 @@ class EnsembleLC:
             Number of principle components to use in the DesignMatrix, by default 6
         verbose : `bool`, optional
             Whether to print out information and progress bars, by default False
+        just_one_lc : `bool`, optional
+            Whether to return after the first lightcurve that passes the quality tests, by default False
         no_lk_cache : `bool`, optional
             Whether to skip using the LightKurve cache and scrub downloads instead (can be useful for runs
             on a computing cluster with limited memory space), by default False
@@ -113,10 +115,14 @@ class EnsembleLC:
         self.scattered_light_frequency = scattered_light_frequency
         self.n_pca = n_pca
         self.verbose = verbose
+        self.just_one_lc = just_one_lc
         self.no_lk_cache = no_lk_cache
         self.debug = debug
 
         if self.output_path is not None and self.previously_downloaded() and not ignore_previous_downloads:
+            if self.verbose:
+                print(("Found previously corrected data for this target, loading it! "
+                       "(Set `ignore_previous_downloads=True` to ignore data)"))
             self = from_fits(os.path.join(self.output_path, "Corrected_LCs",
                                           self.callable + "output_table.fits"), existing_class=self)
 
@@ -322,6 +328,12 @@ class EnsembleLC:
                     path = os.path.join(self.output_path, "Figures", "LCs",
                                         f'{self.callable}_Full_Corrected_LC_Observation_{sector_ind}.png')
                     plt.savefig(path, format='png', bbox_inches="tight")
+
+                if self.just_one_lc:
+                    if self.verbose:
+                        print(("Found a lightcurve that passed quality tests - exiting since "
+                               "`self.just_one_lc=True`"))
+                    break
 
         if self.no_lk_cache():
             self.clear_cache()
