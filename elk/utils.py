@@ -4,11 +4,11 @@ from ._version import __version__
 __all__ = ["flux_to_mag", "flux_err_to_mag_err", "print_version", "elk_say"]
 
 
-_elk_name = r"""      _ _    
-     | | |   
+_elk_name = r"""      _ _
+     | | |
   ___| | | __
  / _ \ | |/ /
-|  __/ |   < 
+|  __/ |   <
  \___|_|_|\_\ """
 
 _elk_say_base = r"""     /|        |\
@@ -30,7 +30,7 @@ def flux_to_mag(flux):
     Parameters
     ----------
     flux : :class:`~numpy.ndarray` or `float`
-        flux in terms of ergs/s 
+        flux in terms of ergs/s
 
     Returns
     -------
@@ -55,8 +55,8 @@ def flux_err_to_mag_err(flux, flux_err):
 
     Returns
     -------
-   mag_err : class: `~numpy.ndarray` or `float` 
-        TESS Magnittude errors 
+   mag_err : class: `~numpy.ndarray` or `float`
+        TESS Magnittude errors
     """
     d_mag_d_flux = -2.5 / (flux * np.log(10))
     m_err_squared = abs(d_mag_d_flux)**2 * flux_err**2
