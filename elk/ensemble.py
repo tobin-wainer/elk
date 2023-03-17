@@ -335,7 +335,7 @@ class EnsembleLC:
                                "`self.just_one_lc=True`"))
                     break
 
-        if self.no_lk_cache():
+        if self.no_lk_cache:
             self.clear_cache()
 
     def lightcurves_summary_file(self):
