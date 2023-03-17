@@ -317,7 +317,7 @@ class EnsembleLC:
                     # also save a plot of the pixel map to visually inspect later
                     ax = lc.quality_tpfs.plot(frame=len(lc.quality_tpfs) // 2, aperture_mask=lc.star_mask)
                     path = os.path.join(self.output_path, "Figures", "LCs",
-                                        f'{self.callable}_pixel_map_observation_{sector_ind}.png')
+                                        f'{self.callable}_flux_map_observation_{sector_ind}.png')
                     plt.savefig(path, format='png', bbox_inches="tight")
                     plt.close(ax.get_figure())
 
