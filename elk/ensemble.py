@@ -260,6 +260,15 @@ class EnsembleLC:
                 self.n_failed_download += 1
                 return
 
+            # check whether this lightcurve has already been corrected
+            lc_path = os.path.join(self.output_path, "Corrected_LCs",
+                                   self.callable + f"_lc_{tpfs.sector}.fits")
+            if os.path.exists(lc_path):
+                # if yes then load the lightcurve in, add to good obs and move onto next sector
+                self.lcs[sector_ind] = BasicLightcurve(fits_path=lc_path, hdu_index=1)
+                self.n_good_obs += 1
+                continue
+
             lc = TESSCutLightcurve(tpfs=tpfs, radius=self.radius, cutout_size=self.cutout_size,
                                    percentile=self.percentile, n_pca=self.n_pca, progress_bar=self.verbose)
 
