@@ -264,6 +264,8 @@ class EnsembleLC:
             lc_path = os.path.join(self.output_path, "Corrected_LCs",
                                    self.callable + f"_lc_{tpfs.sector}.fits")
             if os.path.exists(lc_path):
+                if self.verbose:
+                    print("  Found a pre-corrected lightcurve for this sector, loading it!")
                 # if yes then load the lightcurve in, add to good obs and move onto next sector
                 self.lcs[sector_ind] = BasicLightcurve(fits_path=lc_path, hdu_index=1)
                 self.n_good_obs += 1
