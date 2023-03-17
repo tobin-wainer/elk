@@ -74,6 +74,9 @@ class BasicLightcurve():
         self.periodogram_frequencies = None
         self.ac_time = None
 
+    def __repr__(self):
+        return f"<{self.__class__.__name__}: TESS Sector {self.sector}, {len(self.corrected_lc)} obs>"
+
     @property
     def normalized_flux(self):
         """The normalised flux of the lightcurve"""

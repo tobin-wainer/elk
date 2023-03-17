@@ -10,6 +10,7 @@ import os.path
 import gc
 
 from .lightcurve import BasicLightcurve, TESSCutLightcurve
+from .utils import print_warning, print_failure, print_success
 
 __all__ = ["EnsembleLC", "from_fits"]
 
@@ -17,7 +18,7 @@ __all__ = ["EnsembleLC", "from_fits"]
 class EnsembleLC:
     def __init__(self, radius, cluster_age, output_path="./", cluster_name=None, location=None,
                  percentile=80, cutout_size=99, scattered_light_frequency=5, n_pca=6, verbose=False,
-                 no_lk_cache=False, ignore_previous_downloads=False, debug=False):
+                 just_one_lc=False, no_lk_cache=False, ignore_previous_downloads=False, debug=False):
         """Class for generating lightcurves from TESS cutouts
 
         Parameters
@@ -45,6 +46,8 @@ class EnsembleLC:
             Number of principle components to use in the DesignMatrix, by default 6
         verbose : `bool`, optional
             Whether to print out information and progress bars, by default False
+        just_one_lc : `bool`, optional
+            Whether to return after the first lightcurve that passes the quality tests, by default False
         no_lk_cache : `bool`, optional
             Whether to skip using the LightKurve cache and scrub downloads instead (can be useful for runs
             on a computing cluster with limited memory space), by default False
@@ -57,6 +60,7 @@ class EnsembleLC:
         # make sure that some sort of identifier has been provided
         assert cluster_name is not None or location is not None,\
             "Must provide at least one of `cluster_name` and `location`"
+        self.callable = cluster_name if cluster_name is not None else location
 
         # convert radius to degrees if it has units
         if hasattr(radius, 'unit'):
@@ -71,7 +75,7 @@ class EnsembleLC:
 
         # check main output folder
         if output_path is not None and not os.path.exists(output_path):
-            print(f"WARNING: There is no output folder at the path that you supplied ({output_path})")
+            print_warning(f"There is no output folder at the path that you supplied ({output_path})")
             create_it = input(("  Would you like me to create it for you? "
                                "(If not then no files will be saved) [Y/n]"))
             if create_it == "" or create_it.lower() == "y":
@@ -83,7 +87,9 @@ class EnsembleLC:
         # if we wan't to avoid the lk cache we shall need our own dummy
         if no_lk_cache and not os.path.exists(os.path.join(output_path, 'cache')):
             os.mkdir(os.path.join(output_path, 'cache'))
-            os.mkdir(os.path.join(output_path, 'cache', 'tesscut'))
+            if not os.path.exists(os.path.join(output_path, 'cache', self.callable)):
+                os.mkdir(os.path.join(output_path, 'cache', self.callable))
+                os.mkdir(os.path.join(output_path, 'cache', self.callable, 'tesscut'))
 
         # check subfolders
         self.save = {"lcs": False, "figures": False}
@@ -91,7 +97,7 @@ class EnsembleLC:
             for subpath, key in zip(["Corrected_LCs", os.path.join("Figures", "LCs")], ["lcs", "figures"]):
                 path = os.path.join(output_path, subpath)
                 if not os.path.exists(path):
-                    print(f"WARNING: The necessary subfolder at ({path}) does not exist")
+                    print_warning(f"The necessary subfolder at ({path}) does not exist")
                     create_it = input(("  Would you like me to create it for you? "
                                        "(If not then these files will not be saved) [Y/n]"))
                     if create_it == "" or create_it.lower() == "y":
@@ -105,7 +111,6 @@ class EnsembleLC:
         self.output_path = output_path
         self.radius = radius
         self.cluster_age = cluster_age
-        self.callable = cluster_name if cluster_name is not None else location
         self.cluster_name = cluster_name
         self.location = location
         self.percentile = percentile
@@ -113,10 +118,14 @@ class EnsembleLC:
         self.scattered_light_frequency = scattered_light_frequency
         self.n_pca = n_pca
         self.verbose = verbose
+        self.just_one_lc = just_one_lc
         self.no_lk_cache = no_lk_cache
         self.debug = debug
 
         if self.output_path is not None and self.previously_downloaded() and not ignore_previous_downloads:
+            if self.verbose:
+                print(("Found previously corrected data for this target, loading it! "
+                       "(Set `ignore_previous_downloads=True` to ignore data)"))
             self = from_fits(os.path.join(self.output_path, "Corrected_LCs",
                                           self.callable + "output_table.fits"), existing_class=self)
 
@@ -158,7 +167,8 @@ class EnsembleLC:
     def downloadable(self, ind):
         # use a Try statement to see if we can download the cluster data
         try:
-            download_dir = os.path.join(self.output_path, 'cache') if self.no_lk_cache else None
+            download_dir = os.path.join(self.output_path,
+                                        'cache', self.callable) if self.no_lk_cache else None
             tpfs = self.tess_search_results[ind].download(cutout_size=(self.cutout_size, self.cutout_size),
                                                           download_dir=download_dir)
         except (lk.search.SearchError, FileNotFoundError):
@@ -167,9 +177,9 @@ class EnsembleLC:
 
     def clear_cache(self):
         """Clear the folder containing manually cached lightkurve files"""
-        for file in os.listdir(os.path.join(self.output_path, 'cache', 'tesscut')):
+        for file in os.listdir(os.path.join(self.output_path, 'cache', self.callable, 'tesscut')):
             if file.endswith(".fits"):
-                os.remove(os.path.join(self.output_path, 'cache', 'tesscut', file))
+                os.remove(os.path.join(self.output_path, 'cache', self.callable, 'tesscut', file))
 
     def scattered_light(self, quality_tpfs, full_model_Normalized):
         if self.debug:
@@ -249,50 +259,46 @@ class EnsembleLC:
 
             # First is the Download Test
             tpfs = self.downloadable(sector_ind)
-            if (tpfs is None) & (sector_ind + 1 < self.sectors_available):
+            if tpfs is None:
                 if self.verbose:
-                    print('Failed Download')
+                    print_failure('  Failed Download')
                 self.n_failed_download += 1
                 continue
-            elif (tpfs is None) & (sector_ind + 1 == self.sectors_available):
+
+            # check whether this lightcurve has already been corrected
+            lc_path = os.path.join(self.output_path, "Corrected_LCs",
+                                   self.callable + f"_lc_{tpfs.sector}.fits")
+            if os.path.exists(lc_path):
                 if self.verbose:
-                    print('Failed Download')
-                self.n_failed_download += 1
-                return
+                    print("  Found a pre-corrected lightcurve for this sector, loading it!")
+                # if yes then load the lightcurve in, add to good obs and move onto next sector
+                self.lcs[sector_ind] = BasicLightcurve(fits_path=lc_path, hdu_index=1)
+                self.n_good_obs += 1
+                continue
 
             lc = TESSCutLightcurve(tpfs=tpfs, radius=self.radius, cutout_size=self.cutout_size,
                                    percentile=self.percentile, n_pca=self.n_pca, progress_bar=self.verbose)
 
             # Now Edge Test
             near_edge = lc.near_edge()
-            if near_edge & (sector_ind + 1 < self.sectors_available):
+            if near_edge:
                 if self.verbose:
-                    print('Failed Near Edge Test')
+                    print_failure('  Failed Near Edge Test')
                 self.n_near_edge += 1
                 continue
-            if near_edge & (sector_ind + 1 == self.sectors_available):
-                if self.verbose:
-                    print('Failed Near Edge Test')
-                self.n_near_edge += 1
-                return
 
             lc.correct_lc()
 
             scattered_light_test = self.scattered_light(lc.quality_tpfs, lc.full_model_normalized)
-            if scattered_light_test & (sector_ind + 1 < self.sectors_available):
+            if scattered_light_test:
                 if self.verbose:
-                    print("Failed Scattered Light Test")
+                    print_failure("  Failed Scattered Light Test")
                 self.n_scattered_light += 1
                 continue
-            if scattered_light_test & (sector_ind + 1 == self.sectors_available):
-                if self.verbose:
-                    print("Failed Scattered Light Test")
-                self.n_scattered_light += 1
-                return
             else:
                 # This Else Statement means that the Lightcurve is good and has passed our quality checks
                 if self.verbose:
-                    print(sector_ind, "Passed Quality Tests")
+                    print_success("  Passed Quality Tests")
                 self.n_good_obs += 1
                 self.lcs[sector_ind] = lc
 
@@ -301,7 +307,7 @@ class EnsembleLC:
                     empty_primary = fits.PrimaryHDU()
                     hdul = fits.HDUList([empty_primary, lc.hdu])
                     hdul.writeto(os.path.join(self.output_path, "Corrected_LCs",
-                                              self.callable + f"_lc_{lc.sector}.fits"))
+                                              self.callable + f"_lc_{lc.sector}.fits"), overwrite=True)
 
                 # if the user wants to save figures
                 if self.output_path is not None and self.save["figures"]:
@@ -321,7 +327,13 @@ class EnsembleLC:
                     plt.savefig(path, format='png', bbox_inches="tight")
                     plt.close(ax.get_figure())
 
-        if self.no_lk_cache():
+                if self.just_one_lc:
+                    if self.verbose:
+                        print(("Found a lightcurve that passed quality tests - exiting since "
+                               "`self.just_one_lc=True`"))
+                    break
+
+        if self.no_lk_cache:
             self.clear_cache()
 
     def lightcurves_summary_file(self):
