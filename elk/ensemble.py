@@ -59,6 +59,7 @@ class EnsembleLC:
         # make sure that some sort of identifier has been provided
         assert cluster_name is not None or location is not None,\
             "Must provide at least one of `cluster_name` and `location`"
+        self.callable = cluster_name if cluster_name is not None else location
 
         # convert radius to degrees if it has units
         if hasattr(radius, 'unit'):
@@ -85,7 +86,9 @@ class EnsembleLC:
         # if we wan't to avoid the lk cache we shall need our own dummy
         if no_lk_cache and not os.path.exists(os.path.join(output_path, 'cache')):
             os.mkdir(os.path.join(output_path, 'cache'))
-            os.mkdir(os.path.join(output_path, 'cache', 'tesscut'))
+            if not os.path.exists(os.path.join(output_path, 'cache', self.callable)):
+                os.mkdir(os.path.join(output_path, 'cache', self.callable))
+                os.mkdir(os.path.join(output_path, 'cache', self.callable, 'tesscut'))
 
         # check subfolders
         self.save = {"lcs": False, "figures": False}
@@ -107,7 +110,6 @@ class EnsembleLC:
         self.output_path = output_path
         self.radius = radius
         self.cluster_age = cluster_age
-        self.callable = cluster_name if cluster_name is not None else location
         self.cluster_name = cluster_name
         self.location = location
         self.percentile = percentile
@@ -164,7 +166,8 @@ class EnsembleLC:
     def downloadable(self, ind):
         # use a Try statement to see if we can download the cluster data
         try:
-            download_dir = os.path.join(self.output_path, 'cache') if self.no_lk_cache else None
+            download_dir = os.path.join(self.output_path,
+                                        'cache', self.callable) if self.no_lk_cache else None
             tpfs = self.tess_search_results[ind].download(cutout_size=(self.cutout_size, self.cutout_size),
                                                           download_dir=download_dir)
         except lk.search.SearchError:
@@ -173,9 +176,9 @@ class EnsembleLC:
 
     def clear_cache(self):
         """Clear the folder containing manually cached lightkurve files"""
-        for file in os.listdir(os.path.join(self.output_path, 'cache', 'tesscut')):
+        for file in os.listdir(os.path.join(self.output_path, 'cache', self.callable, 'tesscut')):
             if file.endswith(".fits"):
-                os.remove(os.path.join(self.output_path, 'cache', 'tesscut', file))
+                os.remove(os.path.join(self.output_path, 'cache', self.callable, 'tesscut', file))
 
     def scattered_light(self, quality_tpfs, full_model_Normalized):
         if self.debug:
