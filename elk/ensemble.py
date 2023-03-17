@@ -255,16 +255,11 @@ class EnsembleLC:
 
             # First is the Download Test
             tpfs = self.downloadable(sector_ind)
-            if (tpfs is None) & (sector_ind + 1 < self.sectors_available):
+            if tpfs is None:
                 if self.verbose:
-                    print('Failed Download')
+                    print('  Failed Download')
                 self.n_failed_download += 1
                 continue
-            elif (tpfs is None) & (sector_ind + 1 == self.sectors_available):
-                if self.verbose:
-                    print('Failed Download')
-                self.n_failed_download += 1
-                return
 
             # check whether this lightcurve has already been corrected
             lc_path = os.path.join(self.output_path, "Corrected_LCs",
@@ -282,34 +277,24 @@ class EnsembleLC:
 
             # Now Edge Test
             near_edge = lc.near_edge()
-            if near_edge & (sector_ind + 1 < self.sectors_available):
+            if near_edge:
                 if self.verbose:
-                    print('Failed Near Edge Test')
+                    print('  Failed Near Edge Test')
                 self.n_near_edge += 1
                 continue
-            if near_edge & (sector_ind + 1 == self.sectors_available):
-                if self.verbose:
-                    print('Failed Near Edge Test')
-                self.n_near_edge += 1
-                return
 
             lc.correct_lc()
 
             scattered_light_test = self.scattered_light(lc.quality_tpfs, lc.full_model_normalized)
-            if scattered_light_test & (sector_ind + 1 < self.sectors_available):
+            if scattered_light_test:
                 if self.verbose:
-                    print("Failed Scattered Light Test")
+                    print("  Failed Scattered Light Test")
                 self.n_scattered_light += 1
                 continue
-            if scattered_light_test & (sector_ind + 1 == self.sectors_available):
-                if self.verbose:
-                    print("Failed Scattered Light Test")
-                self.n_scattered_light += 1
-                return
             else:
                 # This Else Statement means that the Lightcurve is good and has passed our quality checks
                 if self.verbose:
-                    print(sector_ind, "Passed Quality Tests")
+                    print("  Passed Quality Tests")
                 self.n_good_obs += 1
                 self.lcs[sector_ind] = lc
 
