@@ -275,13 +275,17 @@ class EnsembleLC:
                 if self.verbose:
                     print_failure("  Failed Scattered Light Test")
                 self.n_scattered_light += 1
+
+                # if minimizing memory usage then delete the failed lightcurve
+                if self.minimize_memory:
+                    del lc
+
                 continue
             else:
                 # This Else Statement means that the Lightcurve is good and has passed our quality checks
                 if self.verbose:
                     print_success("  Passed Quality Tests")
                 self.n_good_obs += 1
-                self.lcs[sector_ind] = lc
 
                 # save the lightcurve for later in case of crashes
                 if self.output_path is not None:
@@ -307,6 +311,14 @@ class EnsembleLC:
                                         f'{self.callable}_flux_map_observation_{sector_ind}.png')
                     plt.savefig(path, format='png', bbox_inches="tight")
                     plt.close(ax.get_figure())
+
+                # if minimizing memory usage then delete the lightcurve since it's already been saved
+                if self.minimize_memory:
+                    del lc
+
+                # otherwise make it accessible to the class as a whole
+                else:
+                    self.lcs[sector_ind] = lc
 
                 if self.just_one_lc:
                     if self.verbose:
