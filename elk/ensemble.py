@@ -135,6 +135,7 @@ class EnsembleLC:
         self.n_bad_quality = 0
         self.n_scattered_light = 0
         self.n_good_obs = 0
+        self.which_sectors_good = []
 
     def __repr__(self):
         return f"<{self.__class__.__name__} - {self.callable}>"
@@ -254,8 +255,10 @@ class EnsembleLC:
                 if self.verbose:
                     print("  Found a pre-corrected lightcurve for this sector, loading it!")
                 # if yes then load the lightcurve in, add to good obs and move onto next sector
-                self.lcs[sector_ind] = BasicLightcurve(fits_path=lc_path, hdu_index=1)
                 self.n_good_obs += 1
+                if not self.minimize_memory:
+                    self.lcs[sector_ind] = BasicLightcurve(fits_path=lc_path, hdu_index=1)
+
                 continue
 
             lc = TESSCutLightcurve(tpfs=tpfs, radius=self.radius, cutout_size=self.cutout_size,
@@ -286,6 +289,7 @@ class EnsembleLC:
                 if self.verbose:
                     print_success("  Passed Quality Tests")
                 self.n_good_obs += 1
+                self.which_sectors_good.append(lc.sector)
 
                 # save the lightcurve for later in case of crashes
                 if self.output_path is not None:
@@ -345,6 +349,13 @@ class EnsembleLC:
             # clear out the cache after we're done making lightcurves
             if self.minimize_memory:
                 self.clear_cache()
+
+        # now we need to load back in the basic corrected lightcurves for the good sectors
+        if self.minimize_memory:
+            self.lcs = [BasicLightcurve(fits_path=os.path.join(self.output_path, "Corrected_LCs",
+                                                               self.callable + f"_lc_{sector}.fits"),
+                                        hdu_index=1)
+                        for sector in self.which_sectors_good]
 
         # write out the full file
         hdr = fits.Header()
