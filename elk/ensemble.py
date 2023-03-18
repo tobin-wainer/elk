@@ -257,6 +257,7 @@ class EnsembleLC:
                     print("  Found a pre-corrected lightcurve for this sector, loading it!")
                 # if yes then load the lightcurve in, add to good obs and move onto next sector
                 self.n_good_obs += 1
+                self.which_sectors_good.append(tpfs.sector)
                 if not self.minimize_memory:
                     self.lcs[sector_ind] = BasicLightcurve(fits_path=lc_path, hdu_index=1)
 
