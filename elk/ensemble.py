@@ -85,9 +85,10 @@ class EnsembleLC:
             else:
                 output_path = None
 
-        # if we wan't to avoid the lk cache we shall need our own dummy
-        if minimize_memory and not os.path.exists(os.path.join(output_path, 'cache')):
-            os.mkdir(os.path.join(output_path, 'cache'))
+        # if we wan't to avoid the lightkurve cache we shall need our own dummy folders to delete later
+        if minimize_memory:
+            if not os.path.exists(os.path.join(output_path, 'cache')):
+                os.mkdir(os.path.join(output_path, 'cache'))
             if not os.path.exists(os.path.join(output_path, 'cache', self.callable)):
                 os.mkdir(os.path.join(output_path, 'cache', self.callable))
                 os.mkdir(os.path.join(output_path, 'cache', self.callable, 'tesscut'))
