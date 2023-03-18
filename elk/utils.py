@@ -83,7 +83,8 @@ def print_success(*args):
     """Print something in green"""
     print(GREEN, end="")
     print(*args, END)
-=======
+
+
 def print_version():
     """Print out the current version of `elk` in a fancy way"""
     print(f'{_elk_name}version {__version__}')
