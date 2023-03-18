@@ -8,7 +8,7 @@ assignees: ''
 ---
 
 **Describe the new feature you'd like**
-A clear and concise description of what you want to happen. E.g. "I love how ``elk`` can create lightcurves, but I think a great improvement would be for it to also fold my laundry."
+A clear and concise description of what you want to happen. E.g. "I love how ``elk`` can create light curves, but I think a great improvement would be for it to also fold my laundry."
 
 **Any suggestions for how to implement this**
 Is there a particular way you would implement this? How could this integrate into the existing code?
