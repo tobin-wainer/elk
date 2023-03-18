@@ -18,7 +18,7 @@ __all__ = ["EnsembleLC", "from_fits"]
 class EnsembleLC:
     def __init__(self, radius, cluster_age, output_path="./", cluster_name=None, location=None,
                  percentile=80, cutout_size=99, scattered_light_frequency=5, n_pca=6, verbose=False,
-                 just_one_lc=False, no_lk_cache=False, ignore_previous_downloads=False, debug=False):
+                 just_one_lc=False, minimize_memory=False, ignore_previous_downloads=False, debug=False):
         """Class for generating lightcurves from TESS cutouts
 
         Parameters
@@ -48,9 +48,10 @@ class EnsembleLC:
             Whether to print out information and progress bars, by default False
         just_one_lc : `bool`, optional
             Whether to return after the first lightcurve that passes the quality tests, by default False
-        no_lk_cache : `bool`, optional
-            Whether to skip using the LightKurve cache and scrub downloads instead (can be useful for runs
-            on a computing cluster with limited memory space), by default False
+        minimize_memory : `bool`, optional
+            Minimize the use of memory of this class: This will cause it to (1) skip using the LightKurve
+            cache and scrub downloads instead and (2) save light curves into files one by one and then remove
+            them from memory, by default False
         ignore_previous_downloads : `bool`, optional
             Whether to ignore previously downloaded and corrected lightcurves            
         debug : `bool`, optional
@@ -85,7 +86,7 @@ class EnsembleLC:
                 output_path = None
 
         # if we wan't to avoid the lk cache we shall need our own dummy
-        if no_lk_cache and not os.path.exists(os.path.join(output_path, 'cache')):
+        if minimize_memory and not os.path.exists(os.path.join(output_path, 'cache')):
             os.mkdir(os.path.join(output_path, 'cache'))
             if not os.path.exists(os.path.join(output_path, 'cache', self.callable)):
                 os.mkdir(os.path.join(output_path, 'cache', self.callable))
@@ -119,7 +120,7 @@ class EnsembleLC:
         self.n_pca = n_pca
         self.verbose = verbose
         self.just_one_lc = just_one_lc
-        self.no_lk_cache = no_lk_cache
+        self.minimize_memory = minimize_memory
         self.debug = debug
 
         if self.output_path is not None and self.previously_downloaded() and not ignore_previous_downloads:
@@ -134,6 +135,7 @@ class EnsembleLC:
         self.n_bad_quality = 0
         self.n_scattered_light = 0
         self.n_good_obs = 0
+        self.which_sectors_good = []
 
     def __repr__(self):
         return f"<{self.__class__.__name__} - {self.callable}>"
@@ -168,7 +170,7 @@ class EnsembleLC:
         # use a Try statement to see if we can download the cluster data
         try:
             download_dir = os.path.join(self.output_path,
-                                        'cache', self.callable) if self.no_lk_cache else None
+                                        'cache', self.callable) if self.minimize_memory else None
             tpfs = self.tess_search_results[ind].download(cutout_size=(self.cutout_size, self.cutout_size),
                                                           download_dir=download_dir)
         except (lk.search.SearchError, FileNotFoundError):
@@ -235,7 +237,7 @@ class EnsembleLC:
                 print(f"Starting Quality Tests for Observation: {sector_ind}")
 
             # if we are avoiding caching then delete every fits file in the cache folder
-            if self.no_lk_cache:
+            if self.minimize_memory:
                 self.clear_cache()
 
             # First is the Download Test
@@ -253,8 +255,10 @@ class EnsembleLC:
                 if self.verbose:
                     print("  Found a pre-corrected lightcurve for this sector, loading it!")
                 # if yes then load the lightcurve in, add to good obs and move onto next sector
-                self.lcs[sector_ind] = BasicLightcurve(fits_path=lc_path, hdu_index=1)
                 self.n_good_obs += 1
+                if not self.minimize_memory:
+                    self.lcs[sector_ind] = BasicLightcurve(fits_path=lc_path, hdu_index=1)
+
                 continue
 
             lc = TESSCutLightcurve(tpfs=tpfs, radius=self.radius, cutout_size=self.cutout_size,
@@ -274,13 +278,18 @@ class EnsembleLC:
                 if self.verbose:
                     print_failure("  Failed Scattered Light Test")
                 self.n_scattered_light += 1
+
+                # if minimizing memory usage then delete the failed lightcurve
+                if self.minimize_memory:
+                    del lc
+
                 continue
             else:
                 # This Else Statement means that the Lightcurve is good and has passed our quality checks
                 if self.verbose:
                     print_success("  Passed Quality Tests")
                 self.n_good_obs += 1
-                self.lcs[sector_ind] = lc
+                self.which_sectors_good.append(lc.sector)
 
                 # save the lightcurve for later in case of crashes
                 if self.output_path is not None:
@@ -307,13 +316,21 @@ class EnsembleLC:
                     plt.savefig(path, format='png', bbox_inches="tight")
                     plt.close(ax.get_figure())
 
+                # if minimizing memory usage then delete the lightcurve since it's already been saved
+                if self.minimize_memory:
+                    del lc
+
+                # otherwise make it accessible to the class as a whole
+                else:
+                    self.lcs[sector_ind] = lc
+
                 if self.just_one_lc:
                     if self.verbose:
                         print(("Found a lightcurve that passed quality tests - exiting since "
                                "`self.just_one_lc=True`"))
                     break
 
-        if self.no_lk_cache:
+        if self.minimize_memory:
             self.clear_cache()
 
     def lightcurves_summary_file(self):
@@ -330,8 +347,15 @@ class EnsembleLC:
             self.get_lcs()
 
             # clear out the cache after we're done making lightcurves
-            if self.no_lk_cache:
+            if self.minimize_memory:
                 self.clear_cache()
+
+        # now we need to load back in the basic corrected lightcurves for the good sectors
+        if self.minimize_memory:
+            self.lcs = [BasicLightcurve(fits_path=os.path.join(self.output_path, "Corrected_LCs",
+                                                               self.callable + f"_lc_{sector}.fits"),
+                                        hdu_index=1)
+                        for sector in self.which_sectors_good]
 
         # write out the full file
         hdr = fits.Header()

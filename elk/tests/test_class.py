@@ -9,7 +9,8 @@ c = EnsembleLC(output_path="../../output",
                cutout_size=10,
                debug=True,
                verbose=True,
-               no_lk_cache=True)
+               minimize_memory=True)
 
 c.lightcurves_summary_file()
-c.access_lightcurve(1)
+
+print(c.lcs)

@@ -75,7 +75,7 @@ class BasicLightcurve():
         self.ac_time = None
 
     def __repr__(self):
-        return f"<{self.__class__.__name__}: TESS Sector {self.sector}, {len(self.corrected_lc)} obs>"
+        return f"<{self.__class__.__name__}: TESS Sector {self.sector}, {len(self.corrected_lc)} timesteps>"
 
     @property
     def normalized_flux(self):
