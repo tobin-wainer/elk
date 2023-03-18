@@ -131,7 +131,7 @@ class EnsembleLC:
 
         # We are also going to document how many observations failed each one of our quality tests
         self.n_failed_download = 0
-        self.n_near_edge = 0
+        self.n_bad_quality = 0
         self.n_scattered_light = 0
         self.n_good_obs = 0
 
@@ -224,28 +224,9 @@ class EnsembleLC:
         return (mzc > 2.5) | ((mxc > 0.02) & (myc > 0.02))
 
     def get_lcs(self):
-        """Get lightcurves for each of the observations of the cluster
+        """Get light curves for each of the observations of the cluster.
 
-        Returns
-        -------
-        good_obs : `int`
-            Number of good observations
-        sectors_available : `int`
-            How many sectors of data are available
-        which_sectors_good : :class:`~numpy.ndarray`
-            Which sectors are good
-        failed_download : `int`
-            How many observations failed to download
-        near_edge_or_Sector_1 : `int`
-            The number of sectors where the target is located too close to the edge of a TESS detector, 
-            where we cannot accurately perform uniform background subtraction; or the custer was observed in
-            Sector 1, which has known systematics
-        scattered_light : `int`
-            The number of sectors with significant scattered light after the correction process. 'Significant'
-            is arbitrarily defined by a by-eye calibration, and the threshold values can be changed if needed
-        lc_Lens : :class:`~numpy.ndarray`
-            The length of each lightcurve
-        """
+        ``self.lcs`` contains the corrected light curves after the function completes."""
         self.lcs = [None for _ in range(self.sectors_available)]
 
         # start iterating through the observations
@@ -279,12 +260,11 @@ class EnsembleLC:
             lc = TESSCutLightcurve(tpfs=tpfs, radius=self.radius, cutout_size=self.cutout_size,
                                    percentile=self.percentile, n_pca=self.n_pca, progress_bar=self.verbose)
 
-            # Now Edge Test
-            near_edge = lc.near_edge()
-            if near_edge:
+            # perform a quality test on the light curve
+            if lc.quality_test():
                 if self.verbose:
-                    print_failure('  Failed Near Edge Test')
-                self.n_near_edge += 1
+                    print_failure('  Failed General Quality Test')
+                self.n_bad_quality += 1
                 continue
 
             lc.correct_lc()
@@ -363,7 +343,7 @@ class EnsembleLC:
         hdr["n_obs"] = (self.sectors_available, "How many sectors of observations exist")
         hdr["n_good"] = (self.n_good_obs, "Number of good observations")
         hdr["n_dlfail"] = (self.n_failed_download, "Number of failed downloads")
-        hdr["n_edge"] = (self.n_near_edge, "Number of obs near edge")
+        hdr["n_qual"] = (self.n_bad_quality, "Number of obs near edge")
         hdr["n_scatt"] = (self.n_scattered_light, "Number of obs with scattered light")
         empty_primary = fits.PrimaryHDU(header=hdr)
         hdul = fits.HDUList([empty_primary] + [lc.hdu for lc in self.lcs if lc is not None])
@@ -376,7 +356,7 @@ class EnsembleLC:
                       'log_age': [self.cluster_age], 'has_data': [self.sectors_available > 0],
                       'n_obs': [self.sectors_available], 'n_good_obs': [self.n_good_obs],
                       'which_sectors_good': [[lc.sector for lc in self.lcs if lc is not None]],
-                      'n_failed_download': [self.n_failed_download], 'n_near_edge': [self.n_near_edge],
+                      'n_failed_download': [self.n_failed_download], 'n_bad_quality': [self.n_bad_quality],
                       'n_scatter_light': [self.n_scattered_light],
                       'lc_lens': [[len(lc.corrected_lc) for lc in self.lcs if lc is not None]]})
 
@@ -399,7 +379,7 @@ def from_fits(filepath, existing_class=None, **kwargs):
         new_ecl.sectors_available = details.header["n_obs"]
         new_ecl.n_good_obs = details.header["n_good"]
         new_ecl.n_failed_download = details.header["n_dlfail"]
-        new_ecl.n_near_edge = details.header["n_edge"]
+        new_ecl.n_bad_quality = details.header["n_qual"]
         new_ecl.n_scattered_light = details.header["n_scatt"]
 
         new_ecl.lcs = [BasicLightcurve(fits_path=filepath, hdu_index=hdu_ind)

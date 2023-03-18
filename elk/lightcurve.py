@@ -402,14 +402,20 @@ class TESSCutLightcurve(BasicLightcurve):
             self._uncorrected_lc = self.quality_tpfs.to_lightcurve(aperture_mask=self.star_mask)
         return self._uncorrected_lc
 
-    def near_edge(self):
-        """Test whether this lightcurve passes our near edge test and isn't part of Sector 1
+    def quality_test(self):
+        """Test whether this lightcurve has (1) any quality TPFs, (2) that observations are not within ~0.28
+        degrees of the edge of the detector (such that NaN values would appear in the cutout) and (3) that it
+        isn't part of TESS Sector 1, which has an unremovable systematic.
 
         Returns
         -------
-        near_edge_flag : `bool`
+        flag : `bool`
             Flag of whether the test was passed
         """
+        # check that there is at least one good quality TPF
+        if not np.any((self.basic_lc.quality == 0) & (self.basic_lc.flux_err > 0)):
+            return False
+
         min_flux = np.min(self.quality_tpfs[0].flux.value)
         min_not_nan = ~np.isnan(min_flux)
         # Also making sure the Sector isn't the one with the Systematic
