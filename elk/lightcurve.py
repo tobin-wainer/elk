@@ -2,6 +2,7 @@ import numpy as np
 import astropy.units as u
 from astropy.io import fits
 from astropy.table import Table
+from astropy.timeseries import LombScargle
 import lightkurve as lk
 from tqdm import tqdm
 import matplotlib.pyplot as plt
@@ -315,7 +316,7 @@ class BasicLightcurve():
 
 class TESSCutLightcurve(BasicLightcurve):
     def __init__(self, radius, lk_search_result=None, tpfs=None,
-                 cutout_size=99, percentile=80, n_pca=6, progress_bar=False):
+                 cutout_size=99, percentile=80, n_pca=6, save_pixel_periodograms=False, progress_bar=False):
         """A lightcurve constructed from a TESSCut search with various correction functionalities
 
         Parameters
@@ -348,7 +349,11 @@ class TESSCutLightcurve(BasicLightcurve):
         self.cutout_size = cutout_size
         self.percentile = percentile
         self.n_pca = n_pca
+        self.save_pixel_periodograms = save_pixel_periodograms
         self.progress_bar = progress_bar
+
+        self.pixel_periodograms = None if not self.save_pixel_periodograms else [None for _ in
+                                                                                 range(self.cutout_size**2)]
 
         # defaults for the cached variables
         self._quality_tpfs = None
@@ -549,7 +554,11 @@ class TESSCutLightcurve(BasicLightcurve):
         r1 = lk.RegressionCorrector(pixel_lightcurve)
 
         # correct the pixel lightcurve by our design matrix
-        r1.correct(self.dm)
+        corrected_lc = r1.correct(self.dm)
+
+        if self.save_pixel_periodograms:
+            lsp = LombScargle(t=corrected_lc["time"], y=corrected_lc["flux"], dy=corrected_lc["flux_err"])
+            self.pixel_periodograms[i * self.cutout_size + j] = lsp.power(self.periodogram_frequencies)
 
         # extract just the systematics components
         systematics_model = (r1.diagnostic_lightcurves['PCA'].flux.value
@@ -562,3 +571,65 @@ class TESSCutLightcurve(BasicLightcurve):
         full_model = full_model_normalized - r1.diagnostic_lightcurves['spline'].flux.value.mean()
 
         return systematics_model, full_model, full_model_normalized
+
+
+    def make_periodogram_peak_pixels_gif(self, freq_bin_centers=np.logspace(-1, 1, 50), vectorised=False):
+        for lower, upper in zip(freq_bin_centers[:-1], freq_bin_centers[1:]):
+            
+            fig, axes = plt.subplots(1, 3, figsize=(18, 4))
+
+            flux_map = self.quality_tpfs.plot(frame=len(self.quality_tpfs) // 2, ax=axes[0])
+
+            axes[1].imshow(self.star_mask, extent=list(axes[0].get_xlim()) + list(axes[0].get_ylim()),
+                           origin='lower', cmap='Reds', alpha=0.5)
+
+            # create a mask for the frequency range
+            frequency_mask = (self.periodogram_frequencies >= lower) & (self.periodogram_frequencies < upper)
+
+            # for the power in each pixel that is within the aperture and for the given frequency range
+            pixel_powers = np.asarray(self.pixel_periodograms[self.star_mask.flatten()])[:, frequency_mask]
+
+            pixel_max_power = np.zeros([self.cutout_size, self.cutout_size], dtype='float64')
+            pixel_max_power[self.star_mask] = np.max(pixel_powers, axis=1)
+
+            pixel_inds = np.argwhere(self.star_mask)
+
+            axes[0].scatter(axes[0].get_xlim()[0] + pixel_inds[:, 0] + 1
+                            axes[0].get_ylim()[0] + pixel_inds[:, 1] + 1
+                            c='r', cmap='Greys',s = 1,alpha=0.5)
+
+            im = axes[1].imshow(pixel_max_power, extent=list(axes[0].get_xlim()) + list(axes[0].get_ylim()),
+                                origin='lower', cmap='Greys', vmax=.2)
+            l_of_LIT_PIX.append(max_power[np.where(max_power > .1)])
+            # axes limits set depending on the cluster
+        #    ax1.set_xlim(60,95)
+        #    ax1.set_ylim(980,1015)
+        #    ax2.set_xlim(60,95)
+        #    ax2.set_ylim(980,1015)
+            # axes adjustments
+        #    ax2.set_xticks(ax1.get_xticks())
+        #    ax2.set_yticks(ax1.get_yticks())
+        #    ax2.set_xlim(ax1.get_xlim())
+        #    ax2.set_ylim(ax1.get_ylim())
+            ax2.set_title('Aperture (star pixels)')
+            
+            cbar = fig.colorbar(im,ax=ax2)#add colorbar
+            ax1.set_title(CLUSTERS[0]+'; ('+str(use_tpfs1[0].ra)+', '+str(use_tpfs1[0].dec)+')')
+            cbar.set_label('LS periodogram power')
+            ax2.set_title('Max LS_power at {0} freq. range'.format(round(freq_bin_centers[freq_index],2)))
+
+        # plot the LS periodoram for the ensemble cluster LC
+            ax3.plot(omega,P_LS,color='k',linewidth=1)
+            ax3.axvline(freq_bin_centers[freq_index]-freq_range/2,color='b',linestyle='dashed')
+            ax3.axvline(freq_bin_centers[freq_index]+freq_range/2,color='b',linestyle='dashed')
+            ax3.set_xscale('log')
+            ax3.set_xlabel('Frequency (1/day)')
+            ax3.set_ylabel('Power')
+            ax3.set_title('Lomb-Scargle periodogram for {0}'.format(CLUSTERS[0]))
+            median_lsp_power_for_freq_range.append(P_LS[np.where(omega > freq_bin_centers[freq_index])][0])
+
+            fig.suptitle('Problem_CO_Pixels at (freq={1})'.format(CLUSTERS[0],round(freq_bin_centers[freq_index],2)))
+            fig.savefig('pixel_gif_plot/Pixels_for_Selected_CO:_gif_plots_(freq={0}).png'.format(round(freq_bin_centers[freq_index],2)))# save those plots
+            plt.show()
+            plt.close(fig)
+
