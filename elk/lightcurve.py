@@ -354,7 +354,7 @@ class TESSCutLightcurve(BasicLightcurve):
         self.save_pixel_periodograms = save_pixel_periodograms
         self.progress_bar = progress_bar
 
-        self.omega = np.l
+        self.omega = np.arange(0.04, 11, 0.01)
         self.pixel_periodograms = None if not self.save_pixel_periodograms else [None for _ in
                                                                                  range(self.cutout_size**2)]
 
@@ -561,7 +561,7 @@ class TESSCutLightcurve(BasicLightcurve):
 
         if self.save_pixel_periodograms:
             lsp = LombScargle(t=corrected_lc["time"], y=corrected_lc["flux"], dy=corrected_lc["flux_err"])
-            self.pixel_periodograms[i * self.cutout_size + j] = lsp.power(self.periodogram_frequencies)
+            self.pixel_periodograms[i * self.cutout_size + j] = lsp.power(self.omega / u.day)
 
         # extract just the systematics components
         systematics_model = (r1.diagnostic_lightcurves['PCA'].flux.value
@@ -588,10 +588,10 @@ class TESSCutLightcurve(BasicLightcurve):
                            origin='lower', cmap='Reds', alpha=0.5)
 
             # create a mask for the frequency range
-            frequency_mask = (self.periodogram_frequencies >= lower) & (self.periodogram_frequencies < upper)
+            frequency_mask = (self.omega >= lower) & (self.omega < upper)
 
             # for the power in each pixel that is within the aperture and for the given frequency range
-            pixel_powers = np.asarray(self.pixel_periodograms[self.star_mask.flatten()])[:, frequency_mask]
+            pixel_powers = np.asarray(self.pixel_periodograms)[self.star_mask.flatten()][:, frequency_mask]
 
             pixel_max_power = np.zeros([self.cutout_size, self.cutout_size], dtype='float64')
             pixel_max_power[self.star_mask] = np.max(pixel_powers, axis=1)
@@ -610,16 +610,16 @@ class TESSCutLightcurve(BasicLightcurve):
             cbar = fig.colorbar(im, ax=axes[1])
             axes[0].set_title(title + ' ('+ str(self.quality_tpfs[0].ra) + ', ' + str(self.quality_tpfs[0].dec)+')')
             cbar.set_label('LS periodogram power')
-            axes[1].set_title('Max LS_power at {0} freq. range'.format(round((lower + upper) / 2, 2)))
+            axes[1].set_title(f'Max LS_power at {(lower + upper) / 2:1.2f} freq. range')
 
             # plot the LS periodogram for the ensemble cluster LC
             fig, axes[2] = self.plot_periodogram(self.omega, fig=fig, ax=axes[2], show=False)
             for lim in [lower, upper]:
                 axes[2].axvline(lim, color='b', linestyle='dashed')
 
-            fig.suptitle(f'Problem_CO_Pixels at (freq={(lower + upper) / 2:1.2f})').format(round(freq_bin_centers[freq_index],2))
-            fig.savefig(os.path.join(output_path, 'gif_plot_frame_{i}.png'))
-            plt.show()
+            fig.suptitle(f'Problem_CO_Pixels at (freq={(lower + upper) / 2:1.2f})')
+            fig.savefig(os.path.join(output_path, f'gif_plot_frame_{i}.png'))
+            # plt.show()
             plt.close(fig)
 
             i += 1
@@ -627,6 +627,6 @@ class TESSCutLightcurve(BasicLightcurve):
         # convert individual frames to a GIF
         gif_path = os.path.join(output_path, 'pixel_power_gif.gif')
         with imageio.get_writer(gif_path, mode='I', fps=1.5) as writer:
-            for i in range(len(freq_bins)):
-                writer.append_data(imageio.imread(os.path.join(output_path, 'gif_plot_frame_{i}.png')))
+            for i in range(len(freq_bins) - 1):
+                writer.append_data(imageio.imread(os.path.join(output_path, f'gif_plot_frame_{i}.png')))
                 
