@@ -6,6 +6,8 @@ from astropy.timeseries import LombScargle
 import lightkurve as lk
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+import os
+import imageio
 
 from .utils import flux_to_mag, flux_err_to_mag_err
 import elk.plot as elkplot
@@ -352,6 +354,7 @@ class TESSCutLightcurve(BasicLightcurve):
         self.save_pixel_periodograms = save_pixel_periodograms
         self.progress_bar = progress_bar
 
+        self.omega = np.l
         self.pixel_periodograms = None if not self.save_pixel_periodograms else [None for _ in
                                                                                  range(self.cutout_size**2)]
 
@@ -573,8 +576,9 @@ class TESSCutLightcurve(BasicLightcurve):
         return systematics_model, full_model, full_model_normalized
 
 
-    def make_periodogram_peak_pixels_gif(self, freq_bin_centers=np.logspace(-1, 1, 50), vectorised=False):
-        for lower, upper in zip(freq_bin_centers[:-1], freq_bin_centers[1:]):
+    def make_periodogram_peak_pixels_gif(self, output_path, freq_bins=np.logspace(-1, 1, 50), title=''):
+        i = 0
+        for lower, upper in zip(freq_bins[:-1], freq_bins[1:]):
             
             fig, axes = plt.subplots(1, 3, figsize=(18, 4))
 
@@ -594,42 +598,35 @@ class TESSCutLightcurve(BasicLightcurve):
 
             pixel_inds = np.argwhere(self.star_mask)
 
-            axes[0].scatter(axes[0].get_xlim()[0] + pixel_inds[:, 0] + 1
-                            axes[0].get_ylim()[0] + pixel_inds[:, 1] + 1
-                            c='r', cmap='Greys',s = 1,alpha=0.5)
+            axes[0].scatter(axes[0].get_xlim()[0] + pixel_inds[:, 0] + 1,
+                            axes[0].get_ylim()[0] + pixel_inds[:, 1] + 1,
+                            c='r', s=1, alpha=0.5)
 
             im = axes[1].imshow(pixel_max_power, extent=list(axes[0].get_xlim()) + list(axes[0].get_ylim()),
                                 origin='lower', cmap='Greys', vmax=.2)
-            l_of_LIT_PIX.append(max_power[np.where(max_power > .1)])
-            # axes limits set depending on the cluster
-        #    ax1.set_xlim(60,95)
-        #    ax1.set_ylim(980,1015)
-        #    ax2.set_xlim(60,95)
-        #    ax2.set_ylim(980,1015)
-            # axes adjustments
-        #    ax2.set_xticks(ax1.get_xticks())
-        #    ax2.set_yticks(ax1.get_yticks())
-        #    ax2.set_xlim(ax1.get_xlim())
-        #    ax2.set_ylim(ax1.get_ylim())
-            ax2.set_title('Aperture (star pixels)')
+
+            axes[1].set_title('Aperture (star pixels)')
             
-            cbar = fig.colorbar(im,ax=ax2)#add colorbar
-            ax1.set_title(CLUSTERS[0]+'; ('+str(use_tpfs1[0].ra)+', '+str(use_tpfs1[0].dec)+')')
+            cbar = fig.colorbar(im, ax=axes[1])
+            axes[0].set_title(title + ' ('+ str(self.quality_tpfs[0].ra) + ', ' + str(self.quality_tpfs[0].dec)+')')
             cbar.set_label('LS periodogram power')
-            ax2.set_title('Max LS_power at {0} freq. range'.format(round(freq_bin_centers[freq_index],2)))
+            axes[1].set_title('Max LS_power at {0} freq. range'.format(round((lower + upper) / 2, 2)))
 
-        # plot the LS periodoram for the ensemble cluster LC
-            ax3.plot(omega,P_LS,color='k',linewidth=1)
-            ax3.axvline(freq_bin_centers[freq_index]-freq_range/2,color='b',linestyle='dashed')
-            ax3.axvline(freq_bin_centers[freq_index]+freq_range/2,color='b',linestyle='dashed')
-            ax3.set_xscale('log')
-            ax3.set_xlabel('Frequency (1/day)')
-            ax3.set_ylabel('Power')
-            ax3.set_title('Lomb-Scargle periodogram for {0}'.format(CLUSTERS[0]))
-            median_lsp_power_for_freq_range.append(P_LS[np.where(omega > freq_bin_centers[freq_index])][0])
+            # plot the LS periodogram for the ensemble cluster LC
+            fig, axes[2] = self.plot_periodogram(self.omega, fig=fig, ax=axes[2], show=False)
+            for lim in [lower, upper]:
+                axes[2].axvline(lim, color='b', linestyle='dashed')
 
-            fig.suptitle('Problem_CO_Pixels at (freq={1})'.format(CLUSTERS[0],round(freq_bin_centers[freq_index],2)))
-            fig.savefig('pixel_gif_plot/Pixels_for_Selected_CO:_gif_plots_(freq={0}).png'.format(round(freq_bin_centers[freq_index],2)))# save those plots
+            fig.suptitle(f'Problem_CO_Pixels at (freq={(lower + upper) / 2:1.2f})').format(round(freq_bin_centers[freq_index],2))
+            fig.savefig(os.path.join(output_path, 'gif_plot_frame_{i}.png'))
             plt.show()
             plt.close(fig)
 
+            i += 1
+
+        # convert individual frames to a GIF
+        gif_path = os.path.join(output_path, 'pixel_power_gif.gif')
+        with imageio.get_writer(gif_path, mode='I', fps=1.5) as writer:
+            for i in range(len(freq_bins)):
+                writer.append_data(imageio.imread(os.path.join(output_path, 'gif_plot_frame_{i}.png')))
+                
