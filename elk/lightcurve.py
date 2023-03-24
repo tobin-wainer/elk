@@ -611,21 +611,19 @@ class TESSCutLightcurve(BasicLightcurve):
 
             cbar = fig.colorbar(im, ax=axes[1])
             cbar.set_label('LS periodogram power')
-            axes[1].set_title('Max Lomb Scargle Power')
+            axes[1].set_title('Maximum Lomb Scargle Power')
 
-            axes[1].annotate((f'Frequency: {(lower + upper) / 2:1.2f} 1/day '
-                              f'(Range: [{lower:1.2f}, {upper:1.2f}])'), xy=(0.5, 0.95),
+            axes[1].annotate((f'Frequency: {(lower + upper) / 2:1.2f} 1/day\n'
+                              f'Range: [{lower:1.2f}, {upper:1.2f}] 1/day'), xy=(0.5, 0.95),
                              xycoords="axes fraction", ha="center", va="top")
 
             # plot the LS periodogram for the ensemble cluster LC
-            fig, axes[2] = self.plot_periodogram(self.omega, fig=fig, ax=axes[2], show=False)
+            fig, axes[2] = self.plot_periodogram(self.omega, fig=fig, ax=axes[2], show=False, title="Ensemble Light Curve Periodogram")
             axes[2].axvspan(lower, upper, color="lightgrey", zorder=-1)
-            for lim in [lower, upper]:
-                axes[2].axvline(lim, color='grey', linestyle='dotted', zorder=-1)
-            fig.savefig(os.path.join(output_path, f'gif_plot_frame_{i}.png'))
-            # plt.show()
-            plt.close(fig)
 
+            # save and close the figure and move on to the next
+            fig.savefig(os.path.join(output_path, f'gif_plot_frame_{i}.png'))
+            plt.close(fig)
             i += 1
 
         # convert individual frames to a GIF
@@ -633,4 +631,3 @@ class TESSCutLightcurve(BasicLightcurve):
         with imageio.get_writer(gif_path, mode='I', fps=1.5) as writer:
             for i in range(len(freq_bins) - 1):
                 writer.append_data(imageio.imread(os.path.join(output_path, f'gif_plot_frame_{i}.png')))
-                
