@@ -575,45 +575,53 @@ class TESSCutLightcurve(BasicLightcurve):
 
         return systematics_model, full_model, full_model_normalized
 
-    def make_periodogram_peak_pixels_gif(self, output_path, freq_bins=np.logspace(-1, 1, 50), title=''):
+    def make_periodogram_peak_pixels_gif(self, output_path, freq_bins=np.logspace(-1, 1, 50), identifier=''):
+        # mask the pixel powers to only be for pixels in the aperture
+        aperture_powers = np.asarray(self.pixel_periodograms)[self.star_mask.flatten()]
+
+        # create a separate frame for each frequency bin
         i = 0
         for lower, upper in zip(freq_bins[:-1], freq_bins[1:]):
-
+            # start a three panel figure
             fig, axes = plt.subplots(1, 3, figsize=(18, 4))
 
+            # plot the entire target pixel file in the first axis
             self.quality_tpfs.plot(frame=len(self.quality_tpfs) // 2, ax=axes[0])
+
+            # get the indices of the aperture pixels and plot a marker on each pixel that matches
+            pixel_inds = np.argwhere(self.star_mask)
+            axes[0].scatter(axes[0].get_xlim()[0] + pixel_inds[:, 1] + 0.5,
+                            axes[0].get_ylim()[0] + pixel_inds[:, 0] + 0.5,
+                            c='r', s=1, alpha=0.5)
+            axes[0].set_title(f'{identifier} ({self.quality_tpfs[0].ra}, {self.quality_tpfs[0].dec})')
 
             # create a mask for the frequency range
             frequency_mask = (self.omega >= lower) & (self.omega < upper)
 
-            # for the power in each pixel that is within the aperture and for the given frequency range
-            pixel_powers = np.asarray(self.pixel_periodograms)[self.star_mask.flatten()][:, frequency_mask]
+            # get power in each pixel that is within the aperture and for the given frequency range
+            pixel_powers = aperture_powers[:, frequency_mask]
 
+            # get the max power in each pixel
             pixel_max_power = np.zeros([self.cutout_size, self.cutout_size], dtype='float64')
             pixel_max_power[self.star_mask] = np.max(pixel_powers, axis=1)
 
-            pixel_inds = np.argwhere(self.star_mask)
-
-            axes[0].scatter(axes[0].get_xlim()[0] + pixel_inds[:, 1] + 0.5,
-                            axes[0].get_ylim()[0] + pixel_inds[:, 0] + 0.5,
-                            c='r', s=1, alpha=0.5)
-
+            # plot the max power in each pixel in the same range as the left panel
             im = axes[1].imshow(pixel_max_power, extent=list(axes[0].get_xlim()) + list(axes[0].get_ylim()),
                                 origin='lower', cmap='Greys', vmax=.2)
 
-            axes[1].set_title('Aperture (star pixels)')
-
             cbar = fig.colorbar(im, ax=axes[1])
-            axes[0].set_title(title + ' ('+ str(self.quality_tpfs[0].ra) + ', ' + str(self.quality_tpfs[0].dec)+')')
             cbar.set_label('LS periodogram power')
-            axes[1].set_title(f'Max LS_power at {(lower + upper) / 2:1.2f} freq. range')
+            axes[1].set_title('Max Lomb Scargle Power')
+
+            axes[1].annotate((f'Frequency: {(lower + upper) / 2:1.2f} 1/day '
+                              f'(Range: [{lower:1.2f}, {upper:1.2f}])'), xy=(0.5, 0.95),
+                             xycoords="axes fraction", ha="center", va="top")
 
             # plot the LS periodogram for the ensemble cluster LC
             fig, axes[2] = self.plot_periodogram(self.omega, fig=fig, ax=axes[2], show=False)
+            axes[2].axvspan(lower, upper, color="lightgrey", zorder=-1)
             for lim in [lower, upper]:
-                axes[2].axvline(lim, color='b', linestyle='dashed')
-
-            fig.suptitle(f'Problem_CO_Pixels at (freq={(lower + upper) / 2:1.2f})')
+                axes[2].axvline(lim, color='grey', linestyle='dotted', zorder=-1)
             fig.savefig(os.path.join(output_path, f'gif_plot_frame_{i}.png'))
             # plt.show()
             plt.close(fig)
