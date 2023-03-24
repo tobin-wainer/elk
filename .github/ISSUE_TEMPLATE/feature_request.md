@@ -2,7 +2,7 @@
 name: Feature request
 about: Got an idea for adding something to elk? Let us know!
 title: ''
-labels: enhancement
+labels: 'enhancement :sunglasses'
 assignees: ''
 
 ---

@@ -2,7 +2,7 @@
 name: Bug report
 about: Help us squash those bugs in elk!
 title: ''
-labels: bug
+labels: 'bug :bug:'
 assignees: ''
 
 ---

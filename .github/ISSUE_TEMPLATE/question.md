@@ -2,7 +2,7 @@
 name: Question
 about: Confused about something in elk? Not sure how to use a function? Feel free to ask questions here!
 title: ''
-labels: question
+labels: 'question'
 assignees: ''
 
 ---

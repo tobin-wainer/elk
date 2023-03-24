@@ -2,7 +2,7 @@
 name: Documentation problem
 about: A part of the documentation is wrong/misleading/unclear
 title: ''
-labels: documentation
+labels: 'documentation :scroll:'
 assignees: ''
 
 ---
