@@ -443,8 +443,8 @@ class TESSCutLightcurve(BasicLightcurve):
         radius_in_pixels = (self.radius * u.deg / TESS_RESOLUTION).to(u.pixel).value
 
         # mask the grid of pixels based on this radius
-        pix, _ = np.meshgrid(np.arange(self.cutout_size), np.arange(self.cutout_size))
-        return (pix - self.cutout_size // 2)**2 + (pix - self.cutout_size // 2)**2 < radius_in_pixels**2
+        pix_x, pix_y = np.meshgrid(np.arange(self.cutout_size), np.arange(self.cutout_size))
+        return (pix_x - self.cutout_size // 2)**2 + (pix_y - self.cutout_size // 2)**2 < radius_in_pixels**2
 
     def correct_lc(self):
         """Correct the lightcurve using the method described in Wainer+2023"""
@@ -575,17 +575,13 @@ class TESSCutLightcurve(BasicLightcurve):
 
         return systematics_model, full_model, full_model_normalized
 
-
     def make_periodogram_peak_pixels_gif(self, output_path, freq_bins=np.logspace(-1, 1, 50), title=''):
         i = 0
         for lower, upper in zip(freq_bins[:-1], freq_bins[1:]):
-            
+
             fig, axes = plt.subplots(1, 3, figsize=(18, 4))
 
-            flux_map = self.quality_tpfs.plot(frame=len(self.quality_tpfs) // 2, ax=axes[0])
-
-            axes[1].imshow(self.star_mask, extent=list(axes[0].get_xlim()) + list(axes[0].get_ylim()),
-                           origin='lower', cmap='Reds', alpha=0.5)
+            self.quality_tpfs.plot(frame=len(self.quality_tpfs) // 2, ax=axes[0])
 
             # create a mask for the frequency range
             frequency_mask = (self.omega >= lower) & (self.omega < upper)
@@ -598,15 +594,15 @@ class TESSCutLightcurve(BasicLightcurve):
 
             pixel_inds = np.argwhere(self.star_mask)
 
-            axes[0].scatter(axes[0].get_xlim()[0] + pixel_inds[:, 0] + 1,
-                            axes[0].get_ylim()[0] + pixel_inds[:, 1] + 1,
+            axes[0].scatter(axes[0].get_xlim()[0] + pixel_inds[:, 1] + 0.5,
+                            axes[0].get_ylim()[0] + pixel_inds[:, 0] + 0.5,
                             c='r', s=1, alpha=0.5)
 
             im = axes[1].imshow(pixel_max_power, extent=list(axes[0].get_xlim()) + list(axes[0].get_ylim()),
                                 origin='lower', cmap='Greys', vmax=.2)
 
             axes[1].set_title('Aperture (star pixels)')
-            
+
             cbar = fig.colorbar(im, ax=axes[1])
             axes[0].set_title(title + ' ('+ str(self.quality_tpfs[0].ra) + ', ' + str(self.quality_tpfs[0].dec)+')')
             cbar.set_label('LS periodogram power')

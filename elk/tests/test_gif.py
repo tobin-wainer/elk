@@ -12,6 +12,4 @@ lc = TESSCutLightcurve(radius=2.9/60, lk_search_result=search_results[1], cutout
 
 lc.correct_lc()
 
-print(lc.pixel_periodograms)
-
-lc.make_periodogram_peak_pixels_gif('.', freq_bins=np.logspace(-1, 1, 5))
+lc.make_periodogram_peak_pixels_gif('.', freq_bins=np.logspace(-1, 1, 20))
