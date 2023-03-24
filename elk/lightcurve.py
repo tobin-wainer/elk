@@ -435,8 +435,8 @@ class TESSCutLightcurve(BasicLightcurve):
         radius_in_pixels = (self.radius * u.deg / TESS_RESOLUTION).to(u.pixel).value
 
         # mask the grid of pixels based on this radius
-        pix, _ = np.meshgrid(np.arange(self.cutout_size), np.arange(self.cutout_size))
-        return (pix - self.cutout_size // 2)**2 + (pix - self.cutout_size // 2)**2 < radius_in_pixels**2
+        pix_x, pix_y = np.meshgrid(np.arange(self.cutout_size), np.arange(self.cutout_size))
+        return (pix_x - self.cutout_size // 2)**2 + (pix_y - self.cutout_size // 2)**2 < radius_in_pixels**2
 
     def correct_lc(self):
         """Correct the lightcurve using the method described in Wainer+2023"""
