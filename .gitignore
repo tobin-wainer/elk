@@ -164,3 +164,5 @@ cython_debug/
 output/
 *.npy
 docs/api/
+elk/tests/*.png
+elk/tests/*.gif
