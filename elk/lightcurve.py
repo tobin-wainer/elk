@@ -633,7 +633,7 @@ class TESSCutLightcurve(BasicLightcurve):
             axes[2].axvspan(lower, upper, color="lightgrey", zorder=-1)
 
             # save and close the figure and move on to the next
-            fig.savefig(os.path.join(output_path, f'gif_plot_frame_{i}.png'))
+            fig.savefig(os.path.join(output_path, f'gif_plot_frame_{i}.png'), bbox_inches="tight")
             plt.close(fig)
             i += 1
 
