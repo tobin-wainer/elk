@@ -575,13 +575,24 @@ class TESSCutLightcurve(BasicLightcurve):
 
         return systematics_model, full_model, full_model_normalized
 
-    def make_periodogram_peak_pixels_gif(self, output_path, freq_bins=np.logspace(-1, 1, 50), identifier=''):
+    def make_periodogram_peak_pixels_gif(self, output_path, freq_bins='auto', identifier=''):
+        if isinstance(freq_bins, str):
+            assert freq_bins == "auto", "`freq_bins` can only be a str if it is equal to 'auto'"
+            self.to_periodogram(self.omega)
+            edges = list(zip(self.stats["peak_left_edge"], self.stats["peak_right_edge"]))
+        else:
+            if isinstance(freq_bins, int):
+                freq_bins = np.logspace(min(self.omega), max(self.omega), freq_bins)
+            edges = list(zip(freq_bins[:-1], freq_bins[1:]))
+
         # mask the pixel powers to only be for pixels in the aperture
         aperture_powers = np.asarray(self.pixel_periodograms)[self.star_mask.flatten()]
 
         # create a separate frame for each frequency bin
         i = 0
-        for lower, upper in zip(freq_bins[:-1], freq_bins[1:]):
+        for lower, upper in edges:
+            if lower > max(self.omega):
+                continue
             # start a three panel figure
             fig, axes = plt.subplots(1, 3, figsize=(18, 4))
 
@@ -629,5 +640,5 @@ class TESSCutLightcurve(BasicLightcurve):
         # convert individual frames to a GIF
         gif_path = os.path.join(output_path, 'pixel_power_gif.gif')
         with imageio.get_writer(gif_path, mode='I', fps=1.5) as writer:
-            for i in range(len(freq_bins) - 1):
+            for i in range(len(edges)):
                 writer.append_data(imageio.imread(os.path.join(output_path, f'gif_plot_frame_{i}.png')))
