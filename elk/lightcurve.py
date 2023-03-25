@@ -599,12 +599,21 @@ class TESSCutLightcurve(BasicLightcurve):
             # plot the entire target pixel file in the first axis
             self.quality_tpfs.plot(frame=len(self.quality_tpfs) // 2, ax=axes[0])
 
-            # get the indices of the aperture pixels and plot a marker on each pixel that matches
-            pixel_inds = np.argwhere(self.star_mask)
-            axes[0].scatter(axes[0].get_xlim()[0] + pixel_inds[:, 1] + 0.5,
-                            axes[0].get_ylim()[0] + pixel_inds[:, 0] + 0.5,
-                            c='r', s=1, alpha=0.5)
+            # create a circle around the aperture
+            x_range = axes[0].get_xlim()[1] - axes[0].get_xlim()[0]
+            y_range = axes[0].get_ylim()[1] - axes[0].get_ylim()[0]
+            circle = plt.Circle(xy=(axes[0].get_xlim()[0] + x_range / 2, axes[0].get_ylim()[0] + y_range / 2),
+                                radius=(self.radius * u.deg / TESS_RESOLUTION).to(u.pixel).value,
+                                edgecolor="red", facecolor="none", linewidth=2)
+            axes[0].add_artist(circle)
             axes[0].set_title(f'{identifier} ({self.quality_tpfs[0].ra}, {self.quality_tpfs[0].dec})')
+
+            # @Tobin uncomment this if you'd rather highlight pixels instead of/in addition to the circle
+            # get the indices of the aperture pixels and plot a marker on each pixel that matches
+            # pixel_inds = np.argwhere(self.star_mask)
+            # axes[0].scatter(axes[0].get_xlim()[0] + pixel_inds[:, 1] + 0.5,
+            #                 axes[0].get_ylim()[0] + pixel_inds[:, 0] + 0.5,
+            #                 c='r', s=1, alpha=0.5)
 
             # create a mask for the frequency range
             frequency_mask = (self.omega >= lower) & (self.omega < upper)
@@ -627,6 +636,11 @@ class TESSCutLightcurve(BasicLightcurve):
             axes[1].annotate((f'Frequency: {(lower + upper) / 2:1.2f} 1/day\n'
                               f'Range: [{lower:1.2f}, {upper:1.2f}] 1/day'), xy=(0.5, 0.95),
                              xycoords="axes fraction", ha="center", va="top")
+
+            circle = plt.Circle(xy=(axes[0].get_xlim()[0] + x_range / 2, axes[0].get_ylim()[0] + y_range / 2),
+                                radius=(self.radius * u.deg / TESS_RESOLUTION).to(u.pixel).value,
+                                edgecolor="grey", facecolor="none", linestyle="dotted")
+            axes[1].add_artist(circle)
 
             # plot the LS periodogram for the ensemble cluster LC
             fig, axes[2] = self.plot_periodogram(self.omega, fig=fig, ax=axes[2], show=False, title="Ensemble Light Curve Periodogram")
