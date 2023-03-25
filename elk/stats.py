@@ -3,7 +3,7 @@ import scipy
 from statsmodels.tsa.stattools import acf as calc_acf
 import os
 
-from scipy.signal import find_peaks, argrelextrema
+from scipy.signal import find_peaks, peak_widths, argrelextrema
 import scipy.linalg
 
 from astropy.table import Table
@@ -177,6 +177,10 @@ def periodogram(time, flux, flux_err, frequencies, n_bootstrap=100, max_peaks=25
     peak_threshold = np.mean(med) + 2 * np.std(med)
     peak_inds, peak_info = find_peaks(one_below, height=peak_threshold)
 
+    _, _, peak_left, peak_right = peak_widths(one_below, peak_inds, rel_height=0.5)
+    peak_left = frequencies[np.floor(peak_left).astype(int)]
+    peak_right = frequencies[np.ceil(peak_right).astype(int)]
+
     # calculate how much of our power is coming from timescales shorter/longer than threshold
     low_freq = frequencies > freq_thresh
     ratio_of_power_at_high_v_low_freq = np.mean(med[~low_freq]) / np.mean(med[low_freq])
@@ -197,6 +201,8 @@ def periodogram(time, flux, flux_err, frequencies, n_bootstrap=100, max_peaks=25
         "max_power": max_power,
         "freq_at_max_power": freq_at_max_power,
         "peak_freqs": peak_freqs,
+        "peak_left_edge": peak_left,
+        "peak_right_edge": peak_right,
         "power_at_peaks": power_at_peaks,
         "n_peaks": n_peaks,
         "ratio_of_power_at_high_v_low_freq": ratio_of_power_at_high_v_low_freq
