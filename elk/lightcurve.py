@@ -576,6 +576,26 @@ class TESSCutLightcurve(BasicLightcurve):
         return systematics_model, full_model, full_model_normalized
 
     def make_periodogram_peak_pixels_gif(self, output_path, freq_bins='auto', identifier=''):
+        """Create gif showing pixels that contribute power to periodogram for different frequency ranges
+
+        The GIF has 3 panels, the first shows the overall TPFs and aperture, the second shows the maximum
+        power in each pixel for this frequency bin (and is annotated with the frequency/range used for this
+        frame) and the last panel shows the overall ensemble light curve periodogram with the frame's
+        frequency range highlighted.
+
+        NOTE: `self.correct_lc` must have already been run and `self.save_pixel_periodograms` must be true.
+
+        Parameters
+        ----------
+        output_path : `str`
+            Path to a folder in which to output the gif and frames
+        freq_bins : `str` or `int` or :class:`~numpy.ndarray`, optional
+            Frequency bins to use for the GIF. Either 'auto' to create a frame for each peak in the
+            periodogram, an integer to use log-spaced bins in the periodogram range or an array of bin edges,
+            by default 'auto'
+        identifier : `str`, optional
+            An identifier for this target to put in the title (e.g. the cluster name), by default ''
+        """
         if isinstance(freq_bins, str):
             assert freq_bins == "auto", "`freq_bins` can only be a str if it is equal to 'auto'"
             self.to_periodogram(self.omega)
