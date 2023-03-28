@@ -612,7 +612,7 @@ class TESSCutLightcurve(BasicLightcurve):
         assert len(aperture_powers) > 0, "No pixel periodograms found - did you run `self.correct_lc`?"
 
         if save_simbad_queries:
-            simbad_queries = []
+            simbad_queries = {'ra': [], 'dec': [], 'freq_lower': [], 'freq_upper': []}
 
         # convert input into bin edges
         if isinstance(freq_bins, str):
@@ -661,6 +661,17 @@ class TESSCutLightcurve(BasicLightcurve):
             pixel_max_power = np.zeros([self.cutout_size, self.cutout_size], dtype='float64')
             pixel_max_power[self.star_mask] = np.max(pixel_powers, axis=1)
 
+            if save_simbad_queries:
+                query_pixels = np.argwhere(pixel_max_power > 0.75 * np.max(pixel_max_power))
+                print(query_pixels)
+                ra, dec = self.quality_tpfs.wcs.pixel_to_world_values(*query_pixels.T)
+                simbad_queries['ra'] = np.concatenate((simbad_queries['ra'], ra))
+                simbad_queries['dec'] = np.concatenate((simbad_queries['dec'], dec))
+                simbad_queries['freq_lower'] = np.concatenate((simbad_queries['freq_lower'],
+                                                               np.repeat(lower, len(ra))))
+                simbad_queries['freq_upper'] = np.concatenate((simbad_queries['freq_upper'],
+                                                               np.repeat(upper, len(ra))))
+
             # plot the max power in each pixel in the same range as the left panel
             im = axes[1].imshow(pixel_max_power, extent=list(axes[0].get_xlim()) + list(axes[0].get_ylim()),
                                 origin='lower', cmap='Greys', vmax=.2)
@@ -688,6 +699,9 @@ class TESSCutLightcurve(BasicLightcurve):
                         bbox_inches="tight")
             plt.close(fig)
             i += 1
+
+        if save_simbad_queries:
+            np.save(os.path.join(output_path, f'{identifier}_simbad_queries.npy'), simbad_queries)
 
         # convert individual frames to a GIF
         gif_path = os.path.join(output_path, f'{identifier}_pixel_power_gif.gif')

@@ -13,5 +13,5 @@ lc.correct_lc()
 
 
 start = time()
-lc.diagnose_lc_periodogram('.', freq_bins='auto')
+lc.diagnose_lc_periodogram('.', freq_bins='auto', identifier='NGC 7790')
 print("Runtime:", time() - start)
