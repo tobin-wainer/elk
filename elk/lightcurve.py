@@ -596,6 +596,16 @@ class TESSCutLightcurve(BasicLightcurve):
         identifier : `str`, optional
             An identifier for this target to put in the title (e.g. the cluster name), by default ''
         """
+        # ensure the necessary data is available to run this
+        assert self.save_pixel_periodograms, ("Pixel periodograms not available. Set "
+                                              "`self.save_pixel_periodograms=True` and re-run "
+                                              "`self.correct_lc`")
+
+        # mask the pixel powers to only be for pixels in the aperture
+        aperture_powers = np.asarray(self.pixel_periodograms)[self.star_mask.flatten()]
+        assert len(aperture_powers) > 0, "No pixel periodograms found - did you run `self.correct_lc`?"
+
+        # convert input into bin edges
         if isinstance(freq_bins, str):
             assert freq_bins == "auto", "`freq_bins` can only be a str if it is equal to 'auto'"
             self.to_periodogram(self.omega)
@@ -604,9 +614,6 @@ class TESSCutLightcurve(BasicLightcurve):
             if isinstance(freq_bins, int):
                 freq_bins = np.logspace(min(self.omega), max(self.omega), freq_bins)
             edges = list(zip(freq_bins[:-1], freq_bins[1:]))
-
-        # mask the pixel powers to only be for pixels in the aperture
-        aperture_powers = np.asarray(self.pixel_periodograms)[self.star_mask.flatten()]
 
         # create a separate frame for each frequency bin
         i = 0
