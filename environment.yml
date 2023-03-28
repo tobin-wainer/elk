@@ -15,6 +15,7 @@ dependencies:
   - pandas
   - tqdm
   - h5py
+  - imageio
   - statsmodels
   - pip:
     - lightkurve
