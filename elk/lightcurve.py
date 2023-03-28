@@ -2,9 +2,12 @@ import numpy as np
 import astropy.units as u
 from astropy.io import fits
 from astropy.table import Table
+from astropy.timeseries import LombScargle
 import lightkurve as lk
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+import os
+import imageio
 
 from .utils import flux_to_mag, flux_err_to_mag_err
 import elk.plot as elkplot
@@ -18,7 +21,8 @@ TESS_RESOLUTION = 21 * u.arcsec / u.pixel
 
 
 class BasicLightcurve():
-    def __init__(self, time=None, flux=None, flux_err=None, sector=None, fits_path=None, hdu_index=None):
+    def __init__(self, time=None, flux=None, flux_err=None, sector=None, fits_path=None, hdu_index=None,
+                 periodogram_freqs=np.arange(0.04, 11, 0.01)):
         """A basic lightcurve class for calculating statistics of corrected lightcurves and plotting them.
 
         This class can either be instantiated manually using time, flux and flux_err values, or loaded in from
@@ -38,6 +42,8 @@ class BasicLightcurve():
             Path to a fits file containing the lightcurve, by default None
         hdu_index : `int`, optional
             Index of the HDU containing the lightcurve, by default None
+        periodogram_freqs : :class:`numpy.ndarray`, optional
+            Frequencies at which to evaluate any periodograms, by default np.arange(0.04, 11, 0.01)
         """
         # check that either data or a file has been given
         has_data = time is not None and flux is not None and flux_err is not None and sector is not None
@@ -71,7 +77,7 @@ class BasicLightcurve():
 
         # prep some class variables for the stats helper functions
         self.stats = {}
-        self.periodogram_frequencies = None
+        self.periodogram_freqs = periodogram_freqs
         self.ac_time = None
 
     def __repr__(self):
@@ -129,13 +135,13 @@ class BasicLightcurve():
                                                      mag_err=mag_err, **kwargs)
         return self.stats["J_Stetson"]
 
-    def to_periodogram(self, frequencies, **kwargs):
+    def to_periodogram(self, frequencies=None, **kwargs):
         """Construct a periodogram using the lightcurve
 
         Parameters
         ----------
-        frequencies : :class:`numpy.ndarray`
-            Frequencies at which to evaluate the periodogram
+        frequencies : :class:`numpy.ndarray`, optional
+            Frequencies at which to evaluate the periodogram, by default self.periodogram_freqs
         **kwargs : `various`
             Keyword arguments to pass to :class:`elk.stats.periodogram`
 
@@ -143,11 +149,15 @@ class BasicLightcurve():
         -------
         Same as :class:`elk.stats.periodogram`
         """
+        # use default frequencies
+        if frequencies is None:
+            frequencies = self.periodogram_freqs
+
         self.periodogram, self.periodogram_percentiles,\
             lsp_stats = elkstats.periodogram(self.corrected_lc.time.value, self.corrected_lc.flux.value,
                                              self.corrected_lc.flux_err.value, frequencies=frequencies,
                                              **kwargs)
-        self.periodogram_frequencies = frequencies
+        self.periodogram_freqs = frequencies
         self.stats.update(lsp_stats)
         return self.periodogram, self.periodogram_percentiles, lsp_stats
 
@@ -241,16 +251,12 @@ class BasicLightcurve():
         fig, ax : :class:`~matplotlib.pyplot.Figure`, :class:`~matplotlib.pyplot.AxesSubplot`
             Figure and axis on which the periodogram has been plotted
         """
-        # ensure reasonable input
-        if self.periodogram_frequencies is None and frequencies is None:
-            raise ValueError(("Must either provide an array of frequencies or have already calculated the "
-                              "periodogram using `.to_periodogram()`"))
-        # calculate periodogram if necessary
-        elif self.periodogram_frequencies is None:
+        # get the periodogram if it hasn't already been run
+        if "peak_freqs" not in self.stats:
             self.to_periodogram(frequencies=frequencies)
 
         title = f'Periodogram for Sector {self.sector}' if title == "auto" else title
-        return elkplot.plot_periodogram(frequencies=self.periodogram_frequencies, power=self.periodogram,
+        return elkplot.plot_periodogram(frequencies=self.periodogram_freqs, power=self.periodogram,
                                         power_percentiles=self.periodogram_percentiles,
                                         peak_freqs=self.stats["peak_freqs"][:self.stats["n_peaks"]],
                                         title=title, **kwargs)
@@ -315,7 +321,8 @@ class BasicLightcurve():
 
 class TESSCutLightcurve(BasicLightcurve):
     def __init__(self, radius, lk_search_result=None, tpfs=None,
-                 cutout_size=99, percentile=80, n_pca=6, progress_bar=False):
+                 cutout_size=99, percentile=80, n_pca=6, periodogram_freqs=np.arange(0.04, 11, 0.01),
+                 save_pixel_periodograms=False, progress_bar=False):
         """A lightcurve constructed from a TESSCut search with various correction functionalities
 
         Parameters
@@ -332,6 +339,8 @@ class TESSCutLightcurve(BasicLightcurve):
             Which percentile to use in the upper limit calculation, by default 80
         n_pca : `int`, optional
             Number of principle components to use in the DesignMatrix, by default 6
+        periodogram_freqs : :class:`numpy.ndarray`, optional
+            Frequencies at which to evaluate any periodograms, by default np.arange(0.04, 11, 0.01)
         progress_bar : `bool`, optional
             Whether to show a progress bar of pixel correction, by default False
         """
@@ -348,7 +357,12 @@ class TESSCutLightcurve(BasicLightcurve):
         self.cutout_size = cutout_size
         self.percentile = percentile
         self.n_pca = n_pca
+        self.save_pixel_periodograms = save_pixel_periodograms
         self.progress_bar = progress_bar
+
+        self.periodogram_freqs = periodogram_freqs
+        self.pixel_periodograms = None if not self.save_pixel_periodograms else [None for _ in
+                                                                                 range(self.cutout_size**2)]
 
         # defaults for the cached variables
         self._quality_tpfs = None
@@ -358,7 +372,6 @@ class TESSCutLightcurve(BasicLightcurve):
 
         # prep some class variables for the stats helper functions
         self.stats = {}
-        self.periodogram_frequencies = None
         self.ac_time = None
 
     @property
@@ -549,7 +562,11 @@ class TESSCutLightcurve(BasicLightcurve):
         r1 = lk.RegressionCorrector(pixel_lightcurve)
 
         # correct the pixel lightcurve by our design matrix
-        r1.correct(self.dm)
+        corrected_lc = r1.correct(self.dm)
+
+        if self.save_pixel_periodograms:
+            lsp = LombScargle(t=corrected_lc["time"], y=corrected_lc["flux"], dy=corrected_lc["flux_err"])
+            self.pixel_periodograms[i * self.cutout_size + j] = lsp.power(self.periodogram_freqs / u.day)
 
         # extract just the systematics components
         systematics_model = (r1.diagnostic_lightcurves['PCA'].flux.value
@@ -562,3 +579,133 @@ class TESSCutLightcurve(BasicLightcurve):
         full_model = full_model_normalized - r1.diagnostic_lightcurves['spline'].flux.value.mean()
 
         return systematics_model, full_model, full_model_normalized
+
+    def diagnose_lc_periodogram(self, output_path, freq_bins='auto', identifier='', save_simbad_queries=True):
+        """Create gif showing pixels that contribute power to periodogram for different frequency ranges
+
+        The GIF has 3 panels, the first shows the overall TPFs and aperture, the second shows the maximum
+        power in each pixel for this frequency bin (and is annotated with the frequency/range used for this
+        frame) and the last panel shows the overall ensemble light curve periodogram with the frame's
+        frequency range highlighted.
+
+        NOTE: `self.correct_lc` must have already been run and `self.save_pixel_periodograms` must be true.
+
+        Parameters
+        ----------
+        output_path : `str`
+            Path to a folder in which to output the gif and frames
+        freq_bins : `str` or `int` or :class:`~numpy.ndarray`, optional
+            Frequency bins to use for the GIF. Either 'auto' to create a frame for each peak in the
+            periodogram, an integer to use log-spaced bins in the periodogram range or an array of bin edges,
+            by default 'auto'
+        identifier : `str`, optional
+            An identifier for this target to put in the title (e.g. the cluster name), by default ''
+        """
+        # ensure the necessary data is available to run this
+        assert self.save_pixel_periodograms, ("Pixel periodograms not available. Set "
+                                              "`self.save_pixel_periodograms=True` and re-run "
+                                              "`self.correct_lc`")
+
+        # mask the pixel powers to only be for pixels in the aperture
+        assert hasattr(self, "star_mask"), "No aperture mask found - have you run `self.correct_lc`?"
+        aperture_powers = np.asarray(self.pixel_periodograms)[self.star_mask.flatten()]
+        assert len(aperture_powers) > 0, "No pixel periodograms found - did you run `self.correct_lc`?"
+
+        if save_simbad_queries:
+            simbad_queries = {'ra': [], 'dec': [], 'freq_lower': [], 'freq_upper': []}
+
+        # convert input into bin edges
+        if isinstance(freq_bins, str):
+            assert freq_bins == "auto", "`freq_bins` can only be a str if it is equal to 'auto'"
+            self.to_periodogram()
+            edges = list(zip(self.stats["peak_left_edge"], self.stats["peak_right_edge"]))
+        else:
+            if isinstance(freq_bins, int):
+                freq_bins = np.logspace(min(self.periodogram_freqs), max(self.periodogram_freqs), freq_bins)
+            edges = list(zip(freq_bins[:-1], freq_bins[1:]))
+
+        # create a separate frame for each frequency bin
+        i = 0
+        for lower, upper in edges:
+            if lower > max(self.periodogram_freqs):
+                continue
+            # start a three panel figure
+            fig, axes = plt.subplots(1, 3, figsize=(18, 4))
+
+            # plot the entire target pixel file in the first axis
+            self.quality_tpfs.plot(frame=len(self.quality_tpfs) // 2, ax=axes[0])
+
+            # create a circle around the aperture
+            x_range = axes[0].get_xlim()[1] - axes[0].get_xlim()[0]
+            y_range = axes[0].get_ylim()[1] - axes[0].get_ylim()[0]
+            circle = plt.Circle(xy=(axes[0].get_xlim()[0] + x_range / 2, axes[0].get_ylim()[0] + y_range / 2),
+                                radius=(self.radius * u.deg / TESS_RESOLUTION).to(u.pixel).value,
+                                edgecolor="red", facecolor="none", linewidth=2)
+            axes[0].add_artist(circle)
+            axes[0].set_title(f'{identifier} ({self.quality_tpfs[0].ra}, {self.quality_tpfs[0].dec})')
+
+            # @Tobin uncomment this if you'd rather highlight pixels instead of/in addition to the circle
+            # get the indices of the aperture pixels and plot a marker on each pixel that matches
+            # pixel_inds = np.argwhere(self.star_mask)
+            # axes[0].scatter(axes[0].get_xlim()[0] + pixel_inds[:, 1] + 0.5,
+            #                 axes[0].get_ylim()[0] + pixel_inds[:, 0] + 0.5,
+            #                 c='r', s=1, alpha=0.5)
+
+            # create a mask for the frequency range
+            frequency_mask = (self.periodogram_freqs >= lower) & (self.periodogram_freqs < upper)
+
+            # get power in each pixel that is within the aperture and for the given frequency range
+            pixel_powers = aperture_powers[:, frequency_mask]
+
+            # get the max power in each pixel
+            pixel_max_power = np.zeros([self.cutout_size, self.cutout_size], dtype='float64')
+            pixel_max_power[self.star_mask] = np.max(pixel_powers, axis=1)
+
+            if save_simbad_queries:
+                query_pixels = np.argwhere(pixel_max_power > 0.75 * np.max(pixel_max_power))
+                print(query_pixels)
+                ra, dec = self.quality_tpfs.wcs.pixel_to_world_values(*query_pixels.T)
+                simbad_queries['ra'] = np.concatenate((simbad_queries['ra'], ra))
+                simbad_queries['dec'] = np.concatenate((simbad_queries['dec'], dec))
+                simbad_queries['freq_lower'] = np.concatenate((simbad_queries['freq_lower'],
+                                                               np.repeat(lower, len(ra))))
+                simbad_queries['freq_upper'] = np.concatenate((simbad_queries['freq_upper'],
+                                                               np.repeat(upper, len(ra))))
+
+            # plot the max power in each pixel in the same range as the left panel
+            im = axes[1].imshow(pixel_max_power, extent=list(axes[0].get_xlim()) + list(axes[0].get_ylim()),
+                                origin='lower', cmap='Greys', vmax=.2)
+
+            cbar = fig.colorbar(im, ax=axes[1])
+            cbar.set_label('LS periodogram power')
+            axes[1].set_title('Maximum Lomb Scargle Power')
+
+            axes[1].annotate((f'Frequency: {(lower + upper) / 2:1.2f} 1/day\n'
+                              f'Range: [{lower:1.2f}, {upper:1.2f}] 1/day'), xy=(0.5, 0.95),
+                             xycoords="axes fraction", ha="center", va="top")
+
+            circle = plt.Circle(xy=(axes[0].get_xlim()[0] + x_range / 2, axes[0].get_ylim()[0] + y_range / 2),
+                                radius=(self.radius * u.deg / TESS_RESOLUTION).to(u.pixel).value,
+                                edgecolor="grey", facecolor="none", linestyle="dotted")
+            axes[1].add_artist(circle)
+
+            # plot the LS periodogram for the ensemble cluster LC
+            fig, axes[2] = self.plot_periodogram(self.periodogram_freqs, fig=fig, ax=axes[2], show=False,
+                                                 title="Ensemble Light Curve Periodogram")
+            axes[2].axvspan(lower, upper, color="lightgrey", zorder=-1)
+
+            # save and close the figure and move on to the next
+            fig.savefig(os.path.join(output_path, f'{identifier}_gif_plot_frame_{i}.png'),
+                        bbox_inches="tight")
+            plt.close(fig)
+            i += 1
+
+        if save_simbad_queries:
+            np.save(os.path.join(output_path, f'{identifier}_simbad_queries.npy'), simbad_queries)
+
+        # convert individual frames to a GIF
+        gif_path = os.path.join(output_path, f'{identifier}_pixel_power_gif.gif')
+        with imageio.get_writer(gif_path, mode='I', fps=1.5) as writer:
+            for i in range(len(edges)):
+                writer.append_data(imageio.imread(os.path.join(output_path,
+                                                               f'{identifier}_gif_plot_frame_{i}.png')))
