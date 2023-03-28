@@ -580,7 +580,7 @@ class TESSCutLightcurve(BasicLightcurve):
 
         return systematics_model, full_model, full_model_normalized
 
-    def diagnose_lc_periodogram(self, output_path, freq_bins='auto', identifier=''):
+    def diagnose_lc_periodogram(self, output_path, freq_bins='auto', identifier='', save_simbad_queries=True):
         """Create gif showing pixels that contribute power to periodogram for different frequency ranges
 
         The GIF has 3 panels, the first shows the overall TPFs and aperture, the second shows the maximum
@@ -686,7 +686,7 @@ class TESSCutLightcurve(BasicLightcurve):
             i += 1
 
         # convert individual frames to a GIF
-        gif_path = os.path.join(output_path, 'pixel_power_gif.gif')
+        gif_path = os.path.join(output_path, f'{identifier}_pixel_power_gif.gif')
         with imageio.get_writer(gif_path, mode='I', fps=1.5) as writer:
             for i in range(len(edges)):
                 writer.append_data(imageio.imread(os.path.join(output_path,
