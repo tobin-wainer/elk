@@ -607,8 +607,12 @@ class TESSCutLightcurve(BasicLightcurve):
                                               "`self.correct_lc`")
 
         # mask the pixel powers to only be for pixels in the aperture
+        assert hasattr(self, "star_mask"), "No aperture mask found - have you run `self.correct_lc`?"
         aperture_powers = np.asarray(self.pixel_periodograms)[self.star_mask.flatten()]
         assert len(aperture_powers) > 0, "No pixel periodograms found - did you run `self.correct_lc`?"
+
+        if save_simbad_queries:
+            simbad_queries = []
 
         # convert input into bin edges
         if isinstance(freq_bins, str):
