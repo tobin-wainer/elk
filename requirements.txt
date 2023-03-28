@@ -13,3 +13,4 @@ h5py
 lightkurve
 tables
 statsmodels
+imageio
