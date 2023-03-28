@@ -575,7 +575,7 @@ class TESSCutLightcurve(BasicLightcurve):
 
         return systematics_model, full_model, full_model_normalized
 
-    def make_periodogram_peak_pixels_gif(self, output_path, freq_bins='auto', identifier=''):
+    def diagnose_lc_periodogram(self, output_path, freq_bins='auto', identifier=''):
         """Create gif showing pixels that contribute power to periodogram for different frequency ranges
 
         The GIF has 3 panels, the first shows the overall TPFs and aperture, the second shows the maximum
@@ -663,11 +663,12 @@ class TESSCutLightcurve(BasicLightcurve):
             axes[1].add_artist(circle)
 
             # plot the LS periodogram for the ensemble cluster LC
-            fig, axes[2] = self.plot_periodogram(self.omega, fig=fig, ax=axes[2], show=False, title="Ensemble Light Curve Periodogram")
+            fig, axes[2] = self.plot_periodogram(self.omega, fig=fig, ax=axes[2], show=False,
+                                                 title="Ensemble Light Curve Periodogram")
             axes[2].axvspan(lower, upper, color="lightgrey", zorder=-1)
 
             # save and close the figure and move on to the next
-            fig.savefig(os.path.join(output_path, f'gif_plot_frame_{i}.png'), bbox_inches="tight")
+            fig.savefig(os.path.join(output_path, f'{identifier}_gif_plot_frame_{i}.png'), bbox_inches="tight")
             plt.close(fig)
             i += 1
 
@@ -675,4 +676,5 @@ class TESSCutLightcurve(BasicLightcurve):
         gif_path = os.path.join(output_path, 'pixel_power_gif.gif')
         with imageio.get_writer(gif_path, mode='I', fps=1.5) as writer:
             for i in range(len(edges)):
-                writer.append_data(imageio.imread(os.path.join(output_path, f'gif_plot_frame_{i}.png')))
+                writer.append_data(imageio.imread(os.path.join(output_path,
+                                                               f'{identifier}_gif_plot_frame_{i}.png')))
