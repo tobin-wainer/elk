@@ -322,7 +322,7 @@ class BasicLightcurve():
 class TESSCutLightcurve(BasicLightcurve):
     def __init__(self, radius, lk_search_result=None, tpfs=None,
                  cutout_size=99, percentile=80, n_pca=6, periodogram_freqs=np.arange(0.04, 11, 0.01),
-                 save_pixel_periodograms=False, progress_bar=False):
+                 save_pixel_periodograms=True, progress_bar=False):
         """A lightcurve constructed from a TESSCut search with various correction functionalities
 
         Parameters
