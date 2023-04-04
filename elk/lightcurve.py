@@ -486,12 +486,12 @@ class TESSCutLightcurve(BasicLightcurve):
                                                            camera=self.quality_tpfs.camera,
                                                            ccd=self.quality_tpfs.ccd,
                                                            cbv_type='MultiScale',
-                                                           band=2).interpolate(self.quality_lc)
+                                                           band=2).interpolate(self.quality_lc, extrapolate=True)
         cbvs_2 = lk.correctors.cbvcorrector.load_tess_cbvs(sector=self.quality_tpfs.sector,
                                                            camera=self.quality_tpfs.camera,
                                                            ccd=self.quality_tpfs.ccd,
                                                            cbv_type='MultiScale',
-                                                           band=3).interpolate(self.quality_lc)
+                                                           band=3).interpolate(self.quality_lc, extrapolate=True)
 
         cbv_dm1 = cbvs_1.to_designmatrix(cbv_indices=np.arange(1, 8))
         cbv_dm2 = cbvs_2.to_designmatrix(cbv_indices=np.arange(1, 8))
