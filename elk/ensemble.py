@@ -19,7 +19,7 @@ class EnsembleLC:
     def __init__(self, radius, cluster_age, output_path="./", identifier=None, location=None,
                  percentile=80, cutout_size=99, scattered_light_frequency=5, n_pca=6, verbose=False,
                  just_one_lc=False, minimize_memory=False, ignore_previous_downloads=False, debug=False):
-        """Class for generating lightcurves from TESS cutouts
+        """Class for generating light curves from TESS cutouts
 
         Parameters
         ----------
@@ -33,9 +33,10 @@ class EnsembleLC:
             Path to a folder in which to save outputs - must have subfolders Corrected_LCs/ and Figures/LCs/,
             by default "./"
         identifier : `str`, optional
-            Name of the cluster, by default None
+            The name to call your object (i.e Cluster Name), by default None; Additionally can be used to 
+            query FFI is location is None.
         location : `str`, optional
-            Location of the cluster #TODO What format here?, by default None
+            Location of the object -must be in ICRS, by default None
         percentile : `int`, optional
             Which percentile to use in the upper limit calculation, by default 80
         cutout_size : `int`, optional
@@ -47,13 +48,13 @@ class EnsembleLC:
         verbose : `bool`, optional
             Whether to print out information and progress bars, by default False
         just_one_lc : `bool`, optional
-            Whether to return after the first lightcurve that passes the quality tests, by default False
+            Whether to return after the first light curve that passes the quality tests, by default False
         minimize_memory : `bool`, optional
             Minimize the use of memory of this class: This will cause it to (1) skip using the LightKurve
             cache and scrub downloads instead and (2) save light curves into files one by one and then remove
             them from memory, by default False
         ignore_previous_downloads : `bool`, optional
-            Whether to ignore previously downloaded and corrected lightcurves            
+            Whether to ignore previously downloaded and corrected light curves            
         debug : `bool`, optional
             #TODO DELETE THIS, by default False
         """
