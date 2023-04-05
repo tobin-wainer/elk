@@ -415,7 +415,7 @@ class TESSCutLightcurve(BasicLightcurve):
             self._uncorrected_lc = self.quality_tpfs.to_lightcurve(aperture_mask=self.star_mask)
         return self._uncorrected_lc
 
-    def quality_test(self):
+    def fails_quality_test(self):
         """Test whether this lightcurve has (1) any quality TPFs, (2) that observations are not within ~0.28
         degrees of the edge of the detector (such that NaN values would appear in the cutout) and (3) that it
         isn't part of TESS Sector 1, which has an unremovable systematic.
@@ -427,7 +427,7 @@ class TESSCutLightcurve(BasicLightcurve):
         """
         # check that there is at least one good quality TPF
         if not np.any((self.basic_lc.quality == 0) & (self.basic_lc.flux_err > 0)):
-            return False
+            return True
 
         min_flux = np.min(self.quality_tpfs[0].flux.value)
         min_not_nan = ~np.isnan(min_flux)
@@ -486,12 +486,14 @@ class TESSCutLightcurve(BasicLightcurve):
                                                            camera=self.quality_tpfs.camera,
                                                            ccd=self.quality_tpfs.ccd,
                                                            cbv_type='MultiScale',
-                                                           band=2).interpolate(self.quality_lc, extrapolate=True)
+                                                           band=2).interpolate(self.quality_lc,
+                                                                               extrapolate=True)
         cbvs_2 = lk.correctors.cbvcorrector.load_tess_cbvs(sector=self.quality_tpfs.sector,
                                                            camera=self.quality_tpfs.camera,
                                                            ccd=self.quality_tpfs.ccd,
                                                            cbv_type='MultiScale',
-                                                           band=3).interpolate(self.quality_lc, extrapolate=True)
+                                                           band=3).interpolate(self.quality_lc,
+                                                                               extrapolate=True)
 
         cbv_dm1 = cbvs_1.to_designmatrix(cbv_indices=np.arange(1, 8))
         cbv_dm2 = cbvs_2.to_designmatrix(cbv_indices=np.arange(1, 8))
