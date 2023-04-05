@@ -2,14 +2,14 @@ import elk
 import matplotlib.pyplot as plt
 
 c = elk.ensemble.EnsembleLC(output_path="../../output",
-               cluster_name='NGC 419',
+               identifier='NGC 419',
                location='23.58271, +61.1236',
                radius=.046,
                cluster_age=7.75,
                cutout_size=10,
                debug=True,
                verbose=True,
-               no_lk_cache=True)
+               minimize_memory=True)
 
 print(c.lightcurves_summary_file())
 
@@ -26,14 +26,14 @@ for lc in c.lcs:
 del c
 
 c = elk.ensemble.EnsembleLC(output_path="../../output",
-               cluster_name='NGC 419',
+               identifier=='NGC 419',
                location='23.58271, +61.1236',
                radius=.046,
                cluster_age=7.75,
                cutout_size=10,
                debug=True,
                verbose=True,
-               no_lk_cache=True)
+               minimize_memory=True)
 
 for lc in c.lcs:
     print(elk.stats.J_stetson(lc.corrected_lc.time.value, lc.corrected_lc.flux.value, lc.corrected_lc.flux_err.value))

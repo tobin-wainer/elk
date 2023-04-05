@@ -16,10 +16,10 @@ __all__ = ["EnsembleLC", "from_fits"]
 
 
 class EnsembleLC:
-    def __init__(self, radius, cluster_age, output_path="./", cluster_name=None, location=None,
+    def __init__(self, radius, cluster_age, output_path="./", identifier=None, location=None,
                  percentile=80, cutout_size=99, scattered_light_frequency=5, n_pca=6, verbose=False,
                  just_one_lc=False, minimize_memory=False, ignore_previous_downloads=False, debug=False):
-        """Class for generating lightcurves from TESS cutouts
+        """Class for generating light curves from TESS cutouts
 
         Parameters
         ----------
@@ -32,10 +32,11 @@ class EnsembleLC:
         output_path : `str`, optional
             Path to a folder in which to save outputs - must have subfolders Corrected_LCs/ and Figures/LCs/,
             by default "./"
-        cluster_name : `str`, optional
-            Name of the cluster, by default None
+        identifier : `str`, optional
+            The name to call your object (i.e Cluster Name), by default None; Additionally can be used to 
+            query FFI is location is None.
         location : `str`, optional
-            Location of the cluster #TODO What format here?, by default None
+            Location of the object -must be in ICRS, by default None
         percentile : `int`, optional
             Which percentile to use in the upper limit calculation, by default 80
         cutout_size : `int`, optional
@@ -47,21 +48,21 @@ class EnsembleLC:
         verbose : `bool`, optional
             Whether to print out information and progress bars, by default False
         just_one_lc : `bool`, optional
-            Whether to return after the first lightcurve that passes the quality tests, by default False
+            Whether to return after the first light curve that passes the quality tests, by default False
         minimize_memory : `bool`, optional
             Minimize the use of memory of this class: This will cause it to (1) skip using the LightKurve
             cache and scrub downloads instead and (2) save light curves into files one by one and then remove
             them from memory, by default False
         ignore_previous_downloads : `bool`, optional
-            Whether to ignore previously downloaded and corrected lightcurves            
+            Whether to ignore previously downloaded and corrected light curves            
         debug : `bool`, optional
             #TODO DELETE THIS, by default False
         """
 
         # make sure that some sort of identifier has been provided
-        assert cluster_name is not None or location is not None,\
-            "Must provide at least one of `cluster_name` and `location`"
-        self.callable = cluster_name if cluster_name is not None else location
+        assert location is not None or identifier is not None,\
+            "Must provide at least one of `identifier` and `location`"
+        self.callable = location if location is not None else identifier
 
         # convert radius to degrees if it has units
         if hasattr(radius, 'unit'):
@@ -113,7 +114,7 @@ class EnsembleLC:
         self.output_path = output_path
         self.radius = radius
         self.cluster_age = cluster_age
-        self.cluster_name = cluster_name
+        self.identifier = identifier
         self.location = location
         self.percentile = percentile
         self.cutout_size = cutout_size
@@ -129,7 +130,7 @@ class EnsembleLC:
                 print(("Found previously corrected data for this target, loading it! "
                        "(Set `ignore_previous_downloads=True` to ignore data)"))
             self = from_fits(os.path.join(self.output_path, "Corrected_LCs",
-                                          self.callable + "output_table.fits"), existing_class=self)
+                                          self.identifier + "output_table.fits"), existing_class=self)
 
         # We are also going to document how many observations failed each one of our quality tests
         self.n_failed_download = 0
@@ -139,7 +140,7 @@ class EnsembleLC:
         self.which_sectors_good = []
 
     def __repr__(self):
-        return f"<{self.__class__.__name__} - {self.callable}>"
+        return f"<{self.__class__.__name__} - {self.identifier}>"
 
     def previously_downloaded(self):
         """Check whether the files have previously been downloaded for this cluster
@@ -149,7 +150,7 @@ class EnsembleLC:
         exists : `bool`
             Whether the file exists
         """
-        path = os.path.join(self.output_path, 'Corrected_LCs/', str(self.callable) + 'output_table.fits')
+        path = os.path.join(self.output_path, 'Corrected_LCs/', str(self.identifier) + 'output_table.fits')
         return os.path.exists(path)
 
     def has_tess_data(self):
@@ -164,7 +165,7 @@ class EnsembleLC:
         self.tess_search_results = lk.search_tesscut(self.callable)
         self.sectors_available = len(self.tess_search_results)
         if self.verbose:
-            print(f'{self.callable} has {self.sectors_available} observations')
+            print(f'{self.identifier} has {self.sectors_available} observations')
         return self.sectors_available > 0
 
     def downloadable(self, ind):
@@ -251,7 +252,7 @@ class EnsembleLC:
 
             # check whether this lightcurve has already been corrected
             lc_path = os.path.join(self.output_path, "Corrected_LCs",
-                                   self.callable + f"_lc_{tpfs.sector}.fits")
+                                   self.identifier + f"_lc_{tpfs.sector}.fits")
             if os.path.exists(lc_path):
                 if self.verbose:
                     print("  Found a pre-corrected lightcurve for this sector, loading it!")
@@ -267,7 +268,7 @@ class EnsembleLC:
                                    percentile=self.percentile, n_pca=self.n_pca, progress_bar=self.verbose)
 
             # perform a quality test on the light curve
-            if lc.quality_test():
+            if lc.fails_quality_test():
                 if self.verbose:
                     print_failure('  Failed General Quality Test')
                 self.n_bad_quality += 1
@@ -298,23 +299,23 @@ class EnsembleLC:
                     empty_primary = fits.PrimaryHDU()
                     hdul = fits.HDUList([empty_primary, lc.hdu])
                     hdul.writeto(os.path.join(self.output_path, "Corrected_LCs",
-                                              self.callable + f"_lc_{lc.sector}.fits"), overwrite=True)
+                                              self.identifier + f"_lc_{lc.sector}.fits"), overwrite=True)
 
                 # if the user wants to save figures
                 if self.output_path is not None and self.save["figures"]:
                     # save a plot of the light curve to visually inspect later
                     fig, ax = lc.plot(show=False)
-                    ax.annotate(self.callable, xy=(0.98, 0.98), xycoords="axes fraction",
+                    ax.annotate(self.identifier, xy=(0.98, 0.98), xycoords="axes fraction",
                                 ha="right", va="top", fontsize="large")
                     path = os.path.join(self.output_path, "Figures", "LCs",
-                                        f'{self.callable}_Full_Corrected_LC_Observation_{sector_ind}.png')
+                                        f'{self.identifier}_Full_Corrected_LC_Observation_{sector_ind}.png')
                     plt.savefig(path, format='png', bbox_inches="tight")
                     plt.close(fig)
 
                     # also save a plot of the pixel map to visually inspect later
                     ax = lc.quality_tpfs.plot(frame=len(lc.quality_tpfs) // 2, aperture_mask=lc.star_mask)
                     path = os.path.join(self.output_path, "Figures", "LCs",
-                                        f'{self.callable}_flux_map_observation_{sector_ind}.png')
+                                        f'{self.identifier}_flux_map_observation_{sector_ind}.png')
                     plt.savefig(path, format='png', bbox_inches="tight")
                     plt.close(ax.get_figure())
 
@@ -355,13 +356,13 @@ class EnsembleLC:
         # now we need to load back in the basic corrected lightcurves for the good sectors
         if self.minimize_memory:
             self.lcs = [BasicLightcurve(fits_path=os.path.join(self.output_path, "Corrected_LCs",
-                                                               self.callable + f"_lc_{sector}.fits"),
+                                                               self.identifier + f"_lc_{sector}.fits"),
                                         hdu_index=1)
                         for sector in self.which_sectors_good]
 
         # write out the full file
         hdr = fits.Header()
-        hdr['name'] = self.cluster_name
+        hdr['name'] = self.identifier
         hdr['location'] = self.location
         hdr["radius"] = (self.radius, "Radius in degrees")
         hdr['log_age'] = (self.cluster_age, "Log Age in dex")
@@ -375,10 +376,10 @@ class EnsembleLC:
         hdul = fits.HDUList([empty_primary] + [lc.hdu for lc in self.lcs if lc is not None])
         if self.output_path is not None:
             hdul.writeto(os.path.join(self.output_path, 'Corrected_LCs/',
-                         str(self.callable) + 'output_table.fits'), overwrite=True)
+                         str(self.identifier) + 'output_table.fits'), overwrite=True)
 
         # return a simple summary table that can be stacked with other clusters
-        return Table({'name': [self.cluster_name], 'location': [self.location], 'radius': [self.radius],
+        return Table({'name': [self.identifier], 'location': [self.location], 'radius': [self.radius],
                       'log_age': [self.cluster_age], 'has_data': [self.sectors_available > 0],
                       'n_obs': [self.sectors_available], 'n_good_obs': [self.n_good_obs],
                       'which_sectors_good': [[lc.sector for lc in self.lcs if lc is not None]],
@@ -390,16 +391,16 @@ class EnsembleLC:
 def from_fits(filepath, existing_class=None, **kwargs):
     # if an existing class is not provided then create a new blank one
     if existing_class is None:
-        new_ecl = EnsembleLC(cluster_name="", radius=None, cluster_age=None, output_path=None, **kwargs)
+        new_ecl = EnsembleLC(identifier="", radius=None, cluster_age=None, output_path=None, **kwargs)
     else:
         new_ecl = existing_class
 
     # open up the fits file and load in the information
     with fits.open(filepath) as hdul:
         details = hdul[0]
-        new_ecl.cluster_name = details.header["name"]
+        new_ecl.identifier = details.header["name"]
         new_ecl.location = details.header["location"]
-        new_ecl.callable = new_ecl.cluster_name if new_ecl.cluster_name is not None else new_ecl.location
+        new_ecl.callable = new_ecl.identifier if new_ecl.identifier is not None else new_ecl.location
         new_ecl.radius = details.header["radius"]
         new_ecl.cluster_age = details.header["log_age"]
         new_ecl.sectors_available = details.header["n_obs"]
