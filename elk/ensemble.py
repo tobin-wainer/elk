@@ -267,7 +267,7 @@ class EnsembleLC:
                                    percentile=self.percentile, n_pca=self.n_pca, progress_bar=self.verbose)
 
             # perform a quality test on the light curve
-            if lc.quality_test():
+            if lc.fails_quality_test():
                 if self.verbose:
                     print_failure('  Failed General Quality Test')
                 self.n_bad_quality += 1
