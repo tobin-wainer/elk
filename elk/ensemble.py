@@ -164,7 +164,7 @@ class EnsembleLC:
         self.tess_search_results = lk.search_tesscut(self.callable)
         self.sectors_available = len(self.tess_search_results)
         if self.verbose:
-            print(f'{self.callable} has {self.sectors_available} observations')
+            print(f'{self.identifier} has {self.sectors_available} observations')
         return self.sectors_available > 0
 
     def downloadable(self, ind):
