@@ -664,7 +664,7 @@ class TESSCutLightcurve(BasicLightcurve):
             pixel_max_power[self.star_mask] = np.max(pixel_powers, axis=1)
 
             if save_simbad_queries:
-                query_pixels = np.argwhere(pixel_max_power > 0.75 * np.max(pixel_max_power))
+                query_pixels = np.argwhere(pixel_max_power > 0.9 * np.max(pixel_max_power))
                 print(query_pixels)
                 ra, dec = self.quality_tpfs.wcs.pixel_to_world_values(*query_pixels.T)
                 simbad_queries['ra'] = np.concatenate((simbad_queries['ra'], ra))
