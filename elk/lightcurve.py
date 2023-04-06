@@ -688,7 +688,7 @@ class TESSCutLightcurve(BasicLightcurve):
 
             circle = plt.Circle(xy=(axes[0].get_xlim()[0] + x_range / 2, axes[0].get_ylim()[0] + y_range / 2),
                                 radius=(self.radius * u.deg / TESS_RESOLUTION).to(u.pixel).value,
-                                edgecolor="grey", facecolor="none", linestyle="dotted")
+                                edgecolor="red", facecolor="none", linestyle="dotted")
             axes[1].add_artist(circle)
 
             # plot the LS periodogram for the ensemble cluster LC
@@ -707,7 +707,7 @@ class TESSCutLightcurve(BasicLightcurve):
 
         # convert individual frames to a GIF
         gif_path = os.path.join(output_path, f'{identifier}_pixel_power_gif.gif')
-        with imageio.get_writer(gif_path, mode='I', fps=1.5) as writer:
+        with imageio.get_writer(gif_path, mode='I', fps=2.5) as writer:
             for i in range(len(edges)):
                 writer.append_data(imageio.imread(os.path.join(output_path,
                                                                f'{identifier}_gif_plot_frame_{i}.png')))
