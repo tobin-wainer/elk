@@ -674,9 +674,9 @@ class TESSCutLightcurve(BasicLightcurve):
                 simbad_queries['freq_upper'] = np.concatenate((simbad_queries['freq_upper'],
                                                                np.repeat(upper, len(ra))))
 
-            # plot the max power in each pixel in the same range as the left panel
+            # plot the max power in each pixel in the same range as the right panel
             im = axes[1].imshow(pixel_max_power, extent=list(axes[0].get_xlim()) + list(axes[0].get_ylim()),
-                                origin='lower', cmap='Greys', vmax=.2)
+                                origin='lower', cmap='Greys', vmax=max(pixel_max_power))
 
             cbar = fig.colorbar(im, ax=axes[1])
             cbar.set_label('LS periodogram power')
