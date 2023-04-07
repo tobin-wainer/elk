@@ -683,8 +683,9 @@ class TESSCutLightcurve(BasicLightcurve):
                 # search around (0, 0) in a 1 degree circle for any star that shows variability
                 query_result = var_Simbad.query_criteria('region(circle, icrs, '+str(ra)+' '+str(dec)+', 0.01d')
                 
-                query_result.add_column([simbad_queries['preak_freq']], name='Peak_Frequency')
-
+                if query_result not None:
+                    query_result.add_column([simbad_queries['preak_freq']], name='Peak_Frequency')
+                else: query_result= 'No Simbad Objects in Pixel'
 
             # plot the max power in each pixel in the same range as the right panel
             im = axes[1].imshow(pixel_max_power, extent=list(axes[0].get_xlim()) + list(axes[0].get_ylim()),
