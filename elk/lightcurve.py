@@ -668,11 +668,8 @@ class TESSCutLightcurve(BasicLightcurve):
 
             if query_simbad:
                 query_pixels = np.argwhere(pixel_max_power > 0.9 * np.max(pixel_max_power))
-                print(np.fliplr(query_pixels))
 
                 ra, dec = np.array(self.quality_tpfs.wcs.pixel_to_world_values(np.fliplr(query_pixels)))[:,0], np.array(self.quality_tpfs.wcs.pixel_to_world_values(np.fliplr(query_pixels)))[:,1] 
-                
-                print(ra, dec)
 
                 simbad_queries['ra'] = np.concatenate((simbad_queries['ra'], ra))
                 simbad_queries['dec'] = np.concatenate((simbad_queries['dec'], dec))
@@ -683,20 +680,18 @@ class TESSCutLightcurve(BasicLightcurve):
                 var_Simbad = Simbad()
                 var_Simbad.add_votable_fields('v*', 'otype', 'flux(V)')
 
-                
                 query_result= var_Simbad.query_region(coord.SkyCoord(ra=ra, dec=dec,
                                                       unit=(u.deg, u.deg), frame='icrs'),
                                                       radius=0.01 * u.deg)
                 
                 
                 
-                #query_result = var_Simbad.query_criteria('region(circle, icrs, '+str(ra)+' '+str(dec)+', 0.01d')
-                print(query_result)
-                #if query_result is not None:
-                    # query_result.add_column([simbad_queries['preak_freq']], name='Peak_Frequency')
-                # else: query_result= 'No Simbad Objects in Pixel'
 
-                #print(query_result)
+                if query_result is not None:
+                    query_result.add_column([simbad_queries['preak_freq']], name='Peak_Frequency')
+                else: query_result= 'No Simbad Objects in Pixel'
+
+                print(query_result)
 
             # plot the max power in each pixel in the same range as the right panel
             im = axes[1].imshow(pixel_max_power, extent=list(axes[0].get_xlim()) + list(axes[0].get_ylim()),
