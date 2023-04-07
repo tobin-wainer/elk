@@ -682,7 +682,14 @@ class TESSCutLightcurve(BasicLightcurve):
                 var_Simbad = Simbad()
                 var_Simbad.add_votable_fields('v*', 'otype', 'flux(V)')
 
-                query_result = var_Simbad.query_criteria('region(circle, icrs, '+str(ra)+' '+str(dec)+', 0.01d')
+                
+                query_result= var_Simbad.query_region(coord.SkyCoord(ra=[ra, dec=dec,
+                                                      unit=(u.deg, u.deg), frame='icrs'),
+                                                      radius=0.01 * u.deg)
+                
+                
+                
+                #query_result = var_Simbad.query_criteria('region(circle, icrs, '+str(ra)+' '+str(dec)+', 0.01d')
                 print(query_result)
                 #if query_result is not None:
                     # query_result.add_column([simbad_queries['preak_freq']], name='Peak_Frequency')
