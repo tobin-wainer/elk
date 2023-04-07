@@ -10,6 +10,7 @@ import os
 import imageio
 from astroquery.simbad import Simbad
 from IPython.display import HTML
+import astropy.coordinates as coord
 
 from .utils import flux_to_mag, flux_err_to_mag_err
 import elk.plot as elkplot
