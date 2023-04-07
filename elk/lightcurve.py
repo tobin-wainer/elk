@@ -689,7 +689,7 @@ class TESSCutLightcurve(BasicLightcurve):
 
             # plot the max power in each pixel in the same range as the right panel
             im = axes[1].imshow(pixel_max_power, extent=list(axes[0].get_xlim()) + list(axes[0].get_ylim()),
-                                origin='lower', cmap='Greys', vmax=max(pixel_max_power))
+                                origin='lower', cmap='Greys', vmax=max(self.periodogram))
 
             cbar = fig.colorbar(im, ax=axes[1])
             cbar.set_label('LS periodogram power')
