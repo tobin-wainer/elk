@@ -667,7 +667,7 @@ class TESSCutLightcurve(BasicLightcurve):
 
             if query_simbad:
                 query_pixels = np.argwhere(pixel_max_power > 0.9 * np.max(pixel_max_power))
-                #print(query_pixels)
+                print(np.fliplr(query_pixels))
 
                 ra, dec = np.array(self.quality_tpfs.wcs.pixel_to_world_values(np.fliplr(query_pixels)))[:,0], np.array(self.quality_tpfs.wcs.pixel_to_world_values(np.fliplr(query_pixels)))[:,1] 
                 
