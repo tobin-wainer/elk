@@ -673,7 +673,7 @@ class TESSCutLightcurve(BasicLightcurve):
                 
                 simbad_queries['ra'] = np.concatenate((simbad_queries['ra'], ra))
                 simbad_queries['dec'] = np.concatenate((simbad_queries['dec'], dec))
-                simbad_queries['peak_freq'] = np.concatenate((simbad_queries['preak_freq'],
+                simbad_queries['peak_freq'] = np.concatenate((simbad_queries['peak_freq'],
                                                                np.repeat(peak_center, len(ra))))
                 
                 # create custom simbad that includes variable star columns
