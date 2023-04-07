@@ -683,7 +683,7 @@ class TESSCutLightcurve(BasicLightcurve):
                 # search around (0, 0) in a 1 degree circle for any star that shows variability
                 query_result = var_Simbad.query_criteria('region(circle, icrs, '+str(ra)+' '+str(dec)+', 0.01d')
                 
-                if query_result not None:
+                if query_result is not None:
                     query_result.add_column([simbad_queries['preak_freq']], name='Peak_Frequency')
                 else: query_result= 'No Simbad Objects in Pixel'
 
