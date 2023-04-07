@@ -683,7 +683,7 @@ class TESSCutLightcurve(BasicLightcurve):
                 var_Simbad.add_votable_fields('v*', 'otype', 'flux(V)')
 
                 
-                query_result= var_Simbad.query_region(coord.SkyCoord(ra=[ra, dec=dec,
+                query_result= var_Simbad.query_region(coord.SkyCoord(ra=ra, dec=dec,
                                                       unit=(u.deg, u.deg), frame='icrs'),
                                                       radius=0.01 * u.deg)
                 
