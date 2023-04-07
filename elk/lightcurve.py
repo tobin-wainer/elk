@@ -8,6 +8,8 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import os
 import imageio
+from astroquery.simbad import Simbad
+from IPython.display import HTML
 
 from .utils import flux_to_mag, flux_err_to_mag_err
 import elk.plot as elkplot
@@ -582,7 +584,7 @@ class TESSCutLightcurve(BasicLightcurve):
 
         return systematics_model, full_model, full_model_normalized
 
-    def diagnose_lc_periodogram(self, output_path, freq_bins='auto', identifier='', save_simbad_queries=True):
+    def diagnose_lc_periodogram(self, output_path, freq_bins='auto', identifier='', query_simbad=True):
         """Create gif showing pixels that contribute power to periodogram for different frequency ranges
 
         The GIF has 3 panels, the first shows the overall TPFs and aperture, the second shows the maximum
@@ -613,14 +615,15 @@ class TESSCutLightcurve(BasicLightcurve):
         aperture_powers = np.asarray(self.pixel_periodograms)[self.star_mask.flatten()]
         assert len(aperture_powers) > 0, "No pixel periodograms found - did you run `self.correct_lc`?"
 
-        if save_simbad_queries:
-            simbad_queries = {'ra': [], 'dec': [], 'freq_lower': [], 'freq_upper': []}
+        if query_simbad:
+            simbad_queries = {'ra': [], 'dec': [], 'peak_freq': []}
 
         # convert input into bin edges
         if isinstance(freq_bins, str):
             assert freq_bins == "auto", "`freq_bins` can only be a str if it is equal to 'auto'"
             self.to_periodogram()
             edges = list(zip(self.stats["peak_left_edge"], self.stats["peak_right_edge"]))
+            peak_center = list(self.stats["peak_freqs"][self.stats['n_peaks']])
         else:
             if isinstance(freq_bins, int):
                 freq_bins = np.logspace(min(self.periodogram_freqs), max(self.periodogram_freqs), freq_bins)
@@ -646,12 +649,11 @@ class TESSCutLightcurve(BasicLightcurve):
             axes[0].add_artist(circle)
             axes[0].set_title(f'{identifier} ({self.quality_tpfs[0].ra}, {self.quality_tpfs[0].dec})')
 
-            # @Tobin uncomment this if you'd rather highlight pixels instead of/in addition to the circle
-            # get the indices of the aperture pixels and plot a marker on each pixel that matches
-            # pixel_inds = np.argwhere(self.star_mask)
-            # axes[0].scatter(axes[0].get_xlim()[0] + pixel_inds[:, 1] + 0.5,
-            #                 axes[0].get_ylim()[0] + pixel_inds[:, 0] + 0.5,
-            #                 c='r', s=1, alpha=0.5)
+            get the indices of the aperture pixels and plot a marker on each pixel that matches
+            pixel_inds = np.argwhere(self.star_mask)
+            axes[0].scatter(axes[0].get_xlim()[0] + pixel_inds[:, 1] + 0.5,
+                            axes[0].get_ylim()[0] + pixel_inds[:, 0] + 0.5,
+                            c='r', s=1, alpha=0.5)
 
             # create a mask for the frequency range
             frequency_mask = (self.periodogram_freqs >= lower) & (self.periodogram_freqs < upper)
@@ -663,16 +665,27 @@ class TESSCutLightcurve(BasicLightcurve):
             pixel_max_power = np.zeros([self.cutout_size, self.cutout_size], dtype='float64')
             pixel_max_power[self.star_mask] = np.max(pixel_powers, axis=1)
 
-            if save_simbad_queries:
+            if query_simbad:
                 query_pixels = np.argwhere(pixel_max_power > 0.9 * np.max(pixel_max_power))
-                print(query_pixels)
-                ra, dec = self.quality_tpfs.wcs.pixel_to_world_values(*query_pixels.T)
+                #print(query_pixels)
+                ra, dec = np.zeros(len(query_pixels), 2)
+
+                for i in range(len(query_pixels)):
+                    ra[i], dec[i] = self.quality_tpfs.wcs.pixel_to_world_values(*np.fliplr(*query_pixels[i])).icrs
                 simbad_queries['ra'] = np.concatenate((simbad_queries['ra'], ra))
                 simbad_queries['dec'] = np.concatenate((simbad_queries['dec'], dec))
-                simbad_queries['freq_lower'] = np.concatenate((simbad_queries['freq_lower'],
-                                                               np.repeat(lower, len(ra))))
-                simbad_queries['freq_upper'] = np.concatenate((simbad_queries['freq_upper'],
-                                                               np.repeat(upper, len(ra))))
+                simbad_queries['peak_freq'] = np.concatenate((simbad_queries['preak_freq'],
+                                                               np.repeat(peak_center, len(ra))))
+                
+                # create custom simbad that includes variable star columns
+                var_Simbad = Simbad()
+                var_Simbad.add_votable_fields('v*', 'otype', 'flux(V)')
+
+                # search around (0, 0) in a 1 degree circle for any star that shows variability
+                query_result = var_Simbad.query_criteria('region(circle, icrs, '+str(ra)+' '+str(dec)+', 0.01d')
+                
+                query_result.add_column([simbad_queries['preak_freq']], name='Peak_Frequency')
+
 
             # plot the max power in each pixel in the same range as the right panel
             im = axes[1].imshow(pixel_max_power, extent=list(axes[0].get_xlim()) + list(axes[0].get_ylim()),
@@ -702,12 +715,14 @@ class TESSCutLightcurve(BasicLightcurve):
             plt.close(fig)
             i += 1
 
-        if save_simbad_queries:
-            np.save(os.path.join(output_path, f'{identifier}_simbad_queries.npy'), simbad_queries)
-
         # convert individual frames to a GIF
         gif_path = os.path.join(output_path, f'{identifier}_pixel_power_gif.gif')
         with imageio.get_writer(gif_path, mode='I', fps=2.5) as writer:
             for i in range(len(edges)):
                 writer.append_data(imageio.imread(os.path.join(output_path,
                                                                f'{identifier}_gif_plot_frame_{i}.png')))
+                
+        #get GIF back
+        gif=HTML('<img src="'+gif_path+'">')
+
+        return gif, query_result
