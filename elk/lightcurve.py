@@ -685,7 +685,7 @@ class TESSCutLightcurve(BasicLightcurve):
                 
                 if query_result is not None:
                     query_result.add_column([simbad_queries['preak_freq']], name='Peak_Frequency')
-                else: query_result= 'No Simbad Objects in Pixel for Peak Preak:'+str(simbad_queries['preak_freq'])
+                else: query_result= 'No Simbad Objects in Pixel for Peak Preak:'+str(simbad_queries['peak_freq'])
 
                 print(query_result)
 
