@@ -668,10 +668,12 @@ class TESSCutLightcurve(BasicLightcurve):
             if query_simbad:
                 query_pixels = np.argwhere(pixel_max_power > 0.9 * np.max(pixel_max_power))
                 #print(query_pixels)
-                ra, dec = np.zeros(len(query_pixels), 2)
+                ra = np.zeros(len(query_pixels))
+                dec = np.zeros(len(query_pixels)) 
 
                 for i in range(len(query_pixels)):
                     ra[i], dec[i] = self.quality_tpfs.wcs.pixel_to_world_values(*np.fliplr(*query_pixels[i])).icrs
+                
                 simbad_queries['ra'] = np.concatenate((simbad_queries['ra'], ra))
                 simbad_queries['dec'] = np.concatenate((simbad_queries['dec'], dec))
                 simbad_queries['peak_freq'] = np.concatenate((simbad_queries['preak_freq'],
