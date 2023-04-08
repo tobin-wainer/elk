@@ -658,15 +658,13 @@ class TESSCutLightcurve(BasicLightcurve):
 
             # create a mask for the frequency range
             frequency_mask = (self.periodogram_freqs >= lower) & (self.periodogram_freqs < upper)
-
+            print(frequency_mask)
             # get power in each pixel that is within the aperture and for the given frequency range
             pixel_powers = aperture_powers[:, frequency_mask]
 
             # get the max power in each pixel
             pixel_max_power = np.zeros([self.cutout_size, self.cutout_size], dtype='float64')
             pixel_max_power[self.star_mask] = np.max(pixel_powers, axis=1)
-
-            center=np.array(peak_center)[np.where(np.array(edges)[:,]==float(lower))]
 
             if query_simbad:
                 query_pixels = np.argwhere(pixel_max_power > 0.9 * np.max(pixel_max_power))
