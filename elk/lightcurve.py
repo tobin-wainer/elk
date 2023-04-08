@@ -658,7 +658,7 @@ class TESSCutLightcurve(BasicLightcurve):
 
             # create a mask for the frequency range
             frequency_mask = (self.periodogram_freqs >= lower) & (self.periodogram_freqs < upper)
-            print(np.median(frequency_mask[self.periodogram_freqs]))
+            print(np.median(self.periodogram_freqs[frequency_mask]]))
             # get power in each pixel that is within the aperture and for the given frequency range
             pixel_powers = aperture_powers[:, frequency_mask]
 
