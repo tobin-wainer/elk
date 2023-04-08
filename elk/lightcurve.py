@@ -666,7 +666,7 @@ class TESSCutLightcurve(BasicLightcurve):
             pixel_max_power = np.zeros([self.cutout_size, self.cutout_size], dtype='float64')
             pixel_max_power[self.star_mask] = np.max(pixel_powers, axis=1)
 
-            center=peak_center[np.where(edges[:,]==lower)]
+            center=peak_center[np.where(np.array(edges)[:,]==lower)]
 
             if query_simbad:
                 query_pixels = np.argwhere(pixel_max_power > 0.9 * np.max(pixel_max_power))
