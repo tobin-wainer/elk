@@ -650,7 +650,7 @@ class TESSCutLightcurve(BasicLightcurve):
             axes[0].add_artist(circle)
             axes[0].set_title(f'{identifier} ({self.quality_tpfs[0].ra}, {self.quality_tpfs[0].dec})')
 
-            #get the indices of the aperture pixels and plot a marker on each pixel that matches
+            # get the indices of the aperture pixels and plot a marker on each pixel that matches
             pixel_inds = np.argwhere(self.star_mask)
             axes[0].scatter(axes[0].get_xlim()[0] + pixel_inds[:, 1] + 0.5,
                             axes[0].get_ylim()[0] + pixel_inds[:, 0] + 0.5,
