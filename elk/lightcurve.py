@@ -729,6 +729,6 @@ class TESSCutLightcurve(BasicLightcurve):
                                                                f'{identifier}_gif_plot_frame_{i}.png')))
                 
         #get GIF back
-        gif=HTML('<img src="'+gif_path+'">')
+        gif=HTML(f'<img src="{gif_path}">')
 
         return gif
