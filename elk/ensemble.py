@@ -45,6 +45,9 @@ class EnsembleLC:
             Frequency at which to check for scattered light, by default 5
         n_pca : `int`, optional
             Number of principle components to use in the DesignMatrix, by default 6
+        spline_knots: `int`, optional
+            Number of knots to include in the spline corrector, by default 5. If None, spline corrector
+            will not be used
         verbose : `bool`, optional
             Whether to print out information and progress bars, by default False
         just_one_lc : `bool`, optional

@@ -344,8 +344,8 @@ class TESSCutLightcurve(BasicLightcurve):
         n_pca : `int`, optional
             Number of principle components to use in the DesignMatrix, by default 6
         spline_knots: `int`, optional
-            Number of knots to include in the spline corrector, by default 5. If 0, spline corrector
-            will not be used 
+            Number of knots to include in the spline corrector, by default 5. If None, spline corrector
+            will not be used
         periodogram_freqs : :class:`numpy.ndarray`, optional
             Frequencies at which to evaluate any periodograms, by default np.arange(0.04, 11, 0.01)
         progress_bar : `bool`, optional
