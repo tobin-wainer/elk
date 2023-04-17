@@ -1,11 +1,12 @@
 import numpy as np
 import astropy.units as u
 from astropy.io import fits
-from astropy.table import Table, vstack
+from astropy.table import Table, vstack, Column
 from astropy.timeseries import LombScargle
 import lightkurve as lk
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+
 import os
 import imageio
 from astroquery.simbad import Simbad
@@ -687,9 +688,9 @@ class TESSCutLightcurve(BasicLightcurve):
                                                        radius=pixel_radius)
 
                 if query_result is not None:
-                    query_result.add_column([round(center, 3)], name='peak_freq')
-                    query_result.add_column([round(lower, 3)], name='peak_lower')
-                    query_result.add_column([round(upper, 3)], name='peak_upper')
+                    query_result.add_column(Column([round(center, 3)]), name='peak_freq')
+                    query_result.add_column(Column([round(lower, 3)]), name='peak_lower')
+                    query_result.add_column(Column([round(upper, 3)]), name='peak_upper')
 
                     if simbad_results is None:
                         simbad_results = query_result
