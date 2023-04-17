@@ -680,9 +680,10 @@ class TESSCutLightcurve(BasicLightcurve):
                 var_Simbad = Simbad()
                 var_Simbad.add_votable_fields('v*', 'otype', 'flux(V)')
 
+                # query SIMBAD for a region that fully encloses the pixel 
                 query_result= var_Simbad.query_region(coord.SkyCoord(ra=ra, dec=dec,
                                                       unit=(u.deg, u.deg), frame='icrs'),
-                                                      radius=0.008 * u.deg)
+                                                      radius=(TESS_RESOLUTION * (1 * u.pixel)).to(u.deg).value * np.sqrt(2))
                 
                 
                 
