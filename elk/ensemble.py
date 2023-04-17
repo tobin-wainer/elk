@@ -120,6 +120,7 @@ class EnsembleLC:
         self.cutout_size = cutout_size
         self.scattered_light_frequency = scattered_light_frequency
         self.n_pca = n_pca
+        self.spline_knots = spline_knots
         self.verbose = verbose
         self.just_one_lc = just_one_lc
         self.minimize_memory = minimize_memory
