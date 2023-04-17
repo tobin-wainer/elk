@@ -687,11 +687,13 @@ class TESSCutLightcurve(BasicLightcurve):
                                                        unit=(u.deg, u.deg), frame='icrs'),
                                                        radius=pixel_radius)
 
+                # query_result=query_result['']
                 if query_result is not None:
                     query_result.add_column(Column([round(center, 3)]), name='peak_freq')
                     query_result.add_column(Column([round(lower, 3)]), name='peak_lower')
                     query_result.add_column(Column([round(upper, 3)]), name='peak_upper')
 
+                    print(query_result.colnames)
                     if simbad_results is None:
                         simbad_results = query_result
                     else:
