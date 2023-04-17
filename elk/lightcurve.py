@@ -533,10 +533,10 @@ class TESSCutLightcurve(BasicLightcurve):
         
         # scattered_light_model_corrected_lightcurve=(self.quality_tpfs - scattered_light[:, None, None]).to_lightcurve(aperture_mask=self.star_mask)
         # systematics_model_corrected_lightcurve=(self.quality_tpfs - systematics_model).to_lightcurve(aperture_mask=self.star_mask)
-            if self.spline_knots is not None:
-                self.corrected_lc = (self.quality_tpfs - full_model).to_lightcurve(aperture_mask=self.star_mask)
-            else:
-                self.corrected_lc = (self.quality_tpfs - systematics_model).to_lightcurve(aperture_mask=self.star_mask)
+        if self.spline_knots is not None:
+            self.corrected_lc = (self.quality_tpfs - full_model).to_lightcurve(aperture_mask=self.star_mask)
+        else:
+            self.corrected_lc = (self.quality_tpfs - systematics_model).to_lightcurve(aperture_mask=self.star_mask)
 
         self.hdu = fits.BinTableHDU.from_columns(
             [fits.Column(name='time', format='D', array=self.corrected_lc.time.value),
