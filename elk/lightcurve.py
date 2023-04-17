@@ -617,7 +617,7 @@ class TESSCutLightcurve(BasicLightcurve):
         assert len(aperture_powers) > 0, "No pixel periodograms found - did you run `self.correct_lc`?"
 
         if query_simbad:
-            simbad_queries = {'ra': [], 'dec': [], 'peak_freq': []}
+            simbad_queries = {'ra': [], 'dec': [], 'peak_freq': [], 'peak_lower': [], 'peak_upper': []}
 
         # convert input into bin edges
         if isinstance(freq_bins, str):
@@ -674,8 +674,8 @@ class TESSCutLightcurve(BasicLightcurve):
                 simbad_queries['ra'] = np.concatenate((simbad_queries['ra'], ra))
                 simbad_queries['dec'] = np.concatenate((simbad_queries['dec'], dec))
                 simbad_queries['peak_freq'] = np.concatenate((simbad_queries['peak_freq'],
-                                                               np.repeat(peak_center, len(ra))))
-                
+                                                               np.repeat(peak_center, len(ra)))
+
                 # create custom simbad that includes variable star columns
                 var_Simbad = Simbad()
                 var_Simbad.add_votable_fields('v*', 'otype', 'flux(V)')
