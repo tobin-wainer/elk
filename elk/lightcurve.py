@@ -1,7 +1,7 @@
 import numpy as np
 import astropy.units as u
 from astropy.io import fits
-from astropy.table import Table
+from astropy.table import Table, vstack
 from astropy.timeseries import LombScargle
 import lightkurve as lk
 from tqdm import tqdm
@@ -622,14 +622,13 @@ class TESSCutLightcurve(BasicLightcurve):
             os.mkdir(os.path.join(output_path, 'diagnostics'))
 
         if query_simbad:
-            simbad_queries = {'ra': [], 'dec': [], 'peak_freq': [], 'peak_lower': [], 'peak_upper': []}
+            simbad_results = None
 
         # convert input into bin edges
         if isinstance(freq_bins, str):
             assert freq_bins == "auto", "`freq_bins` can only be a str if it is equal to 'auto'"
             self.to_periodogram()
             edges = list(zip(self.stats["peak_left_edge"], self.stats["peak_right_edge"]))
-            peak_center = list(self.stats["peak_freqs"][:int(self.stats['n_peaks'])])
         else:
             if isinstance(freq_bins, int):
                 freq_bins = np.logspace(min(self.periodogram_freqs), max(self.periodogram_freqs), freq_bins)
@@ -674,31 +673,29 @@ class TESSCutLightcurve(BasicLightcurve):
             if query_simbad:
                 query_pixels = np.argwhere(pixel_max_power > 0.9 * np.max(pixel_max_power))
 
-                ra, dec = np.array(self.quality_tpfs.wcs.pixel_to_world_values(np.fliplr(query_pixels)))[:,0], np.array(self.quality_tpfs.wcs.pixel_to_world_values(np.fliplr(query_pixels)))[:,1] 
-
-                simbad_queries['ra'] = np.concatenate((simbad_queries['ra'], ra))
-                simbad_queries['dec'] = np.concatenate((simbad_queries['dec'], dec))
-                simbad_queries['peak_freq'] = np.concatenate((simbad_queries['peak_freq'],
-                                                               np.repeat(peak_center, len(ra)))
+                world_values = np.array(self.quality_tpfs.wcs.pixel_to_world_values(np.fliplr(query_pixels)))
+                ra, dec = world_values[:, 0], world_values[:, 1]
 
                 # create custom simbad that includes variable star columns
                 var_Simbad = Simbad()
                 var_Simbad.add_votable_fields('v*', 'otype', 'flux(V)')
 
-                # query SIMBAD for a region that fully encloses the pixel 
-                query_result= var_Simbad.query_region(coord.SkyCoord(ra=ra, dec=dec,
-                                                      unit=(u.deg, u.deg), frame='icrs'),
-                                                      radius=(TESS_RESOLUTION * (1 * u.pixel)).to(u.deg).value * np.sqrt(2))
-                
-                
-                
+                # query SIMBAD for a region that fully encloses the pixel
+                pixel_radius = (TESS_RESOLUTION * (1 * u.pixel)).to(u.deg) * np.sqrt(2)
+                query_result = var_Simbad.query_region(coord.SkyCoord(ra=ra, dec=dec,
+                                                       unit=(u.deg, u.deg), frame='icrs'),
+                                                       radius=pixel_radius)
 
                 if query_result is not None:
-                    query_result.add_column([round(center, 2)], name='Peak_Frequency')
-                else: query_result= 'No Simbad Objects in Pixel'
+                    query_result.add_column([round(center, 3)], name='peak_freq')
+                    query_result.add_column([round(lower, 3)], name='peak_lower')
+                    query_result.add_column([round(upper, 3)], name='peak_upper')
 
-                gif_path = os.path.join(output_path, f'{identifier}_Simbad_Query.fits')
-                query_result.write()
+                    if simbad_results is None:
+                        simbad_results = query_result
+                    else:
+                        simbad_results = vstack([simbad_results, query_result],
+                                                join_type="exact", metadata_conflicts="silent")
 
             # plot the max power in each pixel in the same range as the right panel
             im = axes[1].imshow(pixel_max_power, extent=list(axes[0].get_xlim()) + list(axes[0].get_ylim()),
@@ -728,6 +725,12 @@ class TESSCutLightcurve(BasicLightcurve):
             plt.close(fig)
             i += 1
 
+        # save the simbad results
+        simbad_results.write(os.path.join(output_path, 'diagnostics',
+                                          f'{identifier}_simbad_results.fits'), format="fits")
+
+        print(simbad_results)
+
         # convert individual frames to a GIF
         gif_path = os.path.join(output_path, 'diagnostics', f'{identifier}_pixel_power_gif.gif')
         with imageio.get_writer(gif_path, mode='I', fps=2.5) as writer:
@@ -736,6 +739,6 @@ class TESSCutLightcurve(BasicLightcurve):
                                                                f'{identifier}_gif_plot_frame_{i}.png')))
                 
         #get GIF back
-        gif=HTML(f'<img src="{gif_path}">')
+        gif = HTML(f'<img src="{gif_path}">')
 
         return gif, query_result 
