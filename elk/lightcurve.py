@@ -691,7 +691,8 @@ class TESSCutLightcurve(BasicLightcurve):
                     query_result.add_column([round(center, 2)], name='Peak_Frequency')
                 else: query_result= 'No Simbad Objects in Pixel'
 
-                print(query_result)
+                gif_path = os.path.join(output_path, f'{identifier}_Simbad_Query.fits')
+                query_result.write()
 
             # plot the max power in each pixel in the same range as the right panel
             im = axes[1].imshow(pixel_max_power, extent=list(axes[0].get_xlim()) + list(axes[0].get_ylim()),
@@ -731,4 +732,4 @@ class TESSCutLightcurve(BasicLightcurve):
         #get GIF back
         gif=HTML(f'<img src="{gif_path}">')
 
-        return gif
+        return gif, query_result 
