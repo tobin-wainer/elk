@@ -696,13 +696,11 @@ class TESSCutLightcurve(BasicLightcurve):
                     query_result.add_column(Column([round(lower, 3)]), name='peak_lower')
                     query_result.add_column(Column([round(upper, 3)]), name='peak_upper')
 
-                    print(query_result.colnames)
                     if simbad_results is None:
                         simbad_results = query_result
                     else:
                         simbad_results = vstack([simbad_results, query_result],
                                                 join_type="exact", metadata_conflicts="silent")
-                        print(simbad_results)
                                                 
 
             # plot the max power in each pixel in the same range as the right panel
@@ -732,6 +730,10 @@ class TESSCutLightcurve(BasicLightcurve):
                         bbox_inches="tight")
             plt.close(fig)
             i += 1
+
+
+        for column in simbad_results.colnames:
+            print(column, simbad_results[column][0])
 
         # save the simbad results
         if simbad_results is not None:
