@@ -739,11 +739,14 @@ class TESSCutLightcurve(BasicLightcurve):
             plt.close(fig)
             i += 1
 
+        simbad_results["MAIN_ID"] = simbad_results["MAIN_ID"].astype('str')
+        simbad_results["OTYPE"] = simbad_results["OTYPE"].astype('str')
+
         # save the simbad results
         simbad_results.write(os.path.join(output_path, 'diagnostics',
-                                          f'{identifier}_simbad_results.fits'), format="fits")
+                                          f'{identifier}_simbad_results.hdf5'),
+                             path='data', serialize_meta=True, overwrite=True)
 
-        print(simbad_results)
 
         # convert individual frames to a GIF
         gif_path = os.path.join(output_path, 'diagnostics', f'{identifier}_pixel_power_gif.gif')
