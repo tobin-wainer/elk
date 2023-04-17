@@ -702,12 +702,8 @@ class TESSCutLightcurve(BasicLightcurve):
                     else:
                         simbad_results = vstack([simbad_results, query_result],
                                                 join_type="exact", metadata_conflicts="silent")
-                        # save the simbad results
-                        simbad_results.write(os.path.join(output_path, 'diagnostics',
-                                             f'{identifier}_simbad_results.fits'), format="fits")
-        else: 
-            print('No Simbad Results')
-                        
+                        print(simbad_results)
+                                                
 
             # plot the max power in each pixel in the same range as the right panel
             im = axes[1].imshow(pixel_max_power, extent=list(axes[0].get_xlim()) + list(axes[0].get_ylim()),
@@ -736,6 +732,14 @@ class TESSCutLightcurve(BasicLightcurve):
                         bbox_inches="tight")
             plt.close(fig)
             i += 1
+
+        # save the simbad results
+        if simbad_results is not None:
+            simbad_results.write(os.path.join(output_path, 'diagnostics',
+                                          f'{identifier}_simbad_results.fits'), format="fits")
+        else: 
+            print('No Simbad Results')
+
 
         # convert individual frames to a GIF
         gif_path = os.path.join(output_path, 'diagnostics', f'{identifier}_pixel_power_gif.gif')
