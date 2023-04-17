@@ -616,6 +616,11 @@ class TESSCutLightcurve(BasicLightcurve):
         aperture_powers = np.asarray(self.pixel_periodograms)[self.star_mask.flatten()]
         assert len(aperture_powers) > 0, "No pixel periodograms found - did you run `self.correct_lc`?"
 
+        # ensure output folder and subfolder exists
+        assert os.path.exists(output_path), f"No folder found at output_path: {output_path}"
+        if not os.path.exists(os.path.join(output_path, 'diagnostics')):
+            os.mkdir(os.path.join(output_path, 'diagnostics'))
+
         if query_simbad:
             simbad_queries = {'ra': [], 'dec': [], 'peak_freq': [], 'peak_lower': [], 'peak_upper': []}
 
@@ -718,16 +723,16 @@ class TESSCutLightcurve(BasicLightcurve):
             axes[2].axvspan(lower, upper, color="lightgrey", zorder=-1)
 
             # save and close the figure and move on to the next
-            fig.savefig(os.path.join(output_path, f'{identifier}_gif_plot_frame_{i}.png'),
+            fig.savefig(os.path.join(output_path, 'diagnostics', f'{identifier}_gif_plot_frame_{i}.png'),
                         bbox_inches="tight")
             plt.close(fig)
             i += 1
 
         # convert individual frames to a GIF
-        gif_path = os.path.join(output_path, f'{identifier}_pixel_power_gif.gif')
+        gif_path = os.path.join(output_path, 'diagnostics', f'{identifier}_pixel_power_gif.gif')
         with imageio.get_writer(gif_path, mode='I', fps=2.5) as writer:
             for i in range(len(edges)):
-                writer.append_data(imageio.imread(os.path.join(output_path,
+                writer.append_data(imageio.imread(os.path.join(output_path, 'diagnostics',
                                                                f'{identifier}_gif_plot_frame_{i}.png')))
                 
         #get GIF back
