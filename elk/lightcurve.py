@@ -616,6 +616,11 @@ class TESSCutLightcurve(BasicLightcurve):
         aperture_powers = np.asarray(self.pixel_periodograms)[self.star_mask.flatten()]
         assert len(aperture_powers) > 0, "No pixel periodograms found - did you run `self.correct_lc`?"
 
+        # ensure output folder and subfolder exists
+        assert os.path.exists(output_path), f"No folder found at output_path: {output_path}"
+        if not os.path.exists(os.path.join(output_path, 'diagnostics')):
+            os.mkdir(os.path.join(output_path, 'diagnostics'))
+
         if query_simbad:
             simbad_queries = {'ra': [], 'dec': [], 'peak_freq': []}
 
