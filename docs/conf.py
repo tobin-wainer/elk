@@ -98,8 +98,8 @@ html_theme = 'pydata_sphinx_theme'
 html_theme_options = {
     "logo": {
         "link": "index",
-        "image_light": "logo_nowords_green.png",
-        "image_dark": "logo_nowords_green.png",
+        "image_light": "_static/green-head-and-word.png",
+        "image_dark": "static/white-head-and-word.png",
     },
     "icon_links": [
         {
@@ -113,7 +113,7 @@ html_theme_options = {
 
 html_last_updated_fmt = "%Y %b %d at %H:%M:%S UTC"
 html_show_sourcelink = False
-html_favicon = "_static/favicon.ico"
+html_favicon = "_static/green-word.ico"
 
 html_sidebars = {
     "*": ["sidebar-nav-bs.html"],
