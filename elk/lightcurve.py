@@ -687,7 +687,10 @@ class TESSCutLightcurve(BasicLightcurve):
                                                        unit=(u.deg, u.deg), frame='icrs'),
                                                        radius=pixel_radius)
 
-                # query_result=query_result['']
+                query_result=query_result['MAIN_ID', 'RA', 'DEC', 'V__vartyp', 'V__Vmax', 'V__R_Vmax', 
+                                          'V__magtyp', 'V__UpVmin', 'V__Vmin', 'V__R_Vmin', 'V__UpPeriod', 
+                                          'V__period', 'V__R_period', 'OTYPE', 'FLUX_V']
+                
                 if query_result is not None:
                     query_result.add_column(Column([round(center, 3)]), name='peak_freq')
                     query_result.add_column(Column([round(lower, 3)]), name='peak_lower')
