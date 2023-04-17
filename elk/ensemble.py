@@ -17,7 +17,7 @@ __all__ = ["EnsembleLC", "from_fits"]
 
 class EnsembleLC:
     def __init__(self, radius, cluster_age, output_path="./", identifier=None, location=None,
-                 percentile=80, cutout_size=99, scattered_light_frequency=5, n_pca=6, verbose=False,
+                 percentile=80, cutout_size=99, scattered_light_frequency=5, n_pca=6, spline_knots=5, verbose=False,
                  just_one_lc=False, minimize_memory=False, ignore_previous_downloads=False, debug=False):
         """Class for generating light curves from TESS cutouts
 
@@ -45,6 +45,9 @@ class EnsembleLC:
             Frequency at which to check for scattered light, by default 5
         n_pca : `int`, optional
             Number of principle components to use in the DesignMatrix, by default 6
+        spline_knots: `int`, optional
+            Number of knots to include in the spline corrector, by default 5. If None, spline corrector
+            will not be used
         verbose : `bool`, optional
             Whether to print out information and progress bars, by default False
         just_one_lc : `bool`, optional
@@ -120,6 +123,7 @@ class EnsembleLC:
         self.cutout_size = cutout_size
         self.scattered_light_frequency = scattered_light_frequency
         self.n_pca = n_pca
+        self.spline_knots = spline_knots
         self.verbose = verbose
         self.just_one_lc = just_one_lc
         self.minimize_memory = minimize_memory
@@ -265,7 +269,8 @@ class EnsembleLC:
                 continue
 
             lc = TESSCutLightcurve(tpfs=tpfs, radius=self.radius, cutout_size=self.cutout_size,
-                                   percentile=self.percentile, n_pca=self.n_pca, progress_bar=self.verbose)
+                                   percentile=self.percentile, n_pca=self.n_pca, spline_knots=self.spline_knots,
+                                     progress_bar=self.verbose)
 
             # perform a quality test on the light curve
             if lc.fails_quality_test():

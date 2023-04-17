@@ -325,8 +325,9 @@ class BasicLightcurve():
 
 class TESSCutLightcurve(BasicLightcurve):
     def __init__(self, radius, lk_search_result=None, tpfs=None,
-                 cutout_size=99, percentile=80, n_pca=6, periodogram_freqs=np.arange(0.04, 11, 0.01),
-                 save_pixel_periodograms=True, progress_bar=False):
+                 cutout_size=99, percentile=80, n_pca=6, spline_knots=5,
+                 periodogram_freqs=np.arange(0.04, 11, 0.01), save_pixel_periodograms=True,
+                 progress_bar=False):
         """A lightcurve constructed from a TESSCut search with various correction functionalities
 
         Parameters
@@ -343,6 +344,9 @@ class TESSCutLightcurve(BasicLightcurve):
             Which percentile to use in the upper limit calculation, by default 80
         n_pca : `int`, optional
             Number of principle components to use in the DesignMatrix, by default 6
+        spline_knots: `int`, optional
+            Number of knots to include in the spline corrector, by default 5. If None, spline corrector
+            will not be used
         periodogram_freqs : :class:`numpy.ndarray`, optional
             Frequencies at which to evaluate any periodograms, by default np.arange(0.04, 11, 0.01)
         progress_bar : `bool`, optional
@@ -361,6 +365,7 @@ class TESSCutLightcurve(BasicLightcurve):
         self.cutout_size = cutout_size
         self.percentile = percentile
         self.n_pca = n_pca
+        self.spline_knots = spline_knots
         self.save_pixel_periodograms = save_pixel_periodograms
         self.progress_bar = progress_bar
 
@@ -472,12 +477,12 @@ class TESSCutLightcurve(BasicLightcurve):
         # We can use our background aperture to create pixel time series and then take Principal
         # Components of the data using Singular Value Decomposition. This gives us the "top" trends
         # that are present in the background data
-        pca_dm1 = lk.DesignMatrix(self.quality_tpfs.flux.value[:, bkg_aper], name='PCA').pca(self.n_pca)
+        pca_dm = lk.DesignMatrix(self.quality_tpfs.flux.value[:, bkg_aper], name='PCA').pca(self.n_pca)
 
         # Here we are going to set the priors for the PCA to be located around the
         # flux values of the uncorrected LC
-        pca_dm1.prior_mu = np.array([np.median(self.uncorrected_lc.flux.value) for _ in range(self.n_pca)])
-        pca_dm1.prior_sigma = np.array([(np.percentile(self.uncorrected_lc.flux.value, 84)
+        pca_dm.prior_mu = np.array([np.median(self.uncorrected_lc.flux.value) for _ in range(self.n_pca)])
+        pca_dm.prior_sigma = np.array([(np.percentile(self.uncorrected_lc.flux.value, 84)
                                          - np.percentile(self.uncorrected_lc.flux.value, 16))
                                         for _ in range(self.n_pca)])
 
@@ -508,10 +513,9 @@ class TESSCutLightcurve(BasicLightcurve):
         # We can make a simple basis-spline (b-spline) model for astrophysical variability. This will be a
         # flexible, smooth model. The number of knots is important, we want to only correct for very long
         # term variability that looks like systematics, so here we have 5 knots, the smaller the better
-        spline_dm1 = lk.designmatrix.create_spline_matrix(self.quality_tpfs.time.value, n_knots=5)
-
-        # Here we create our design matrix
-        self.dm = lk.DesignMatrixCollection([pca_dm1, cbv_dm_use, spline_dm1])
+        spline_dm1 = lk.designmatrix.create_spline_matrix(self.quality_tpfs.time.value, 
+                                                            n_knots=self.spline_knots)
+        self.dm = lk.DesignMatrixCollection([pca_dm, cbv_dm_use, spline_dm1])
 
         full_model, systematics_model, self.full_model_normalized = np.ones((3, *self.quality_tpfs.shape))
         if self.progress_bar:
@@ -524,12 +528,9 @@ class TESSCutLightcurve(BasicLightcurve):
                     full_model[:, i, j], self.full_model_normalized[:, i, j] = self.correct_pixel(i, j)
 
         # Calculate Lightcurves
-        # NOTE - we are also calculating a lightcurve which does not include the spline model,
-        # this is the systematics_model_corrected_lightcurve1
-        # TODO: actually use these other lightcurves
-        # scattered_light_model_corrected_lightcurve=(self.quality_tpfs - scattered_light[:, None, None]).to_lightcurve(aperture_mask=self.star_mask)
-        # systematics_model_corrected_lightcurve=(self.quality_tpfs - systematics_model).to_lightcurve(aperture_mask=self.star_mask)
         self.corrected_lc = (self.quality_tpfs - full_model).to_lightcurve(aperture_mask=self.star_mask)
+            
+        self.systematics_corrected_lc = (self.quality_tpfs - systematics_model).to_lightcurve(aperture_mask=self.star_mask)
 
         self.hdu = fits.BinTableHDU.from_columns(
             [fits.Column(name='time', format='D', array=self.corrected_lc.time.value),
