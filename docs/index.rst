@@ -16,7 +16,7 @@ elk
 
 Welcome to the **E**\ nsemble **L**\ ight\ **K**\ urve Python package, or simply ``elk``!
 
-This package allows you to download, correct, analyze and visualize *ensemble* light curves from TESS data using the methods outlined in `Wainer+2023 <https://ui.adsabs.harvard.edu/>`_. While originally designed for analysis of star clusters, it can be used to create ensemble light curves for any given aperture.
+This package allows you to download, correct, analyze and visualize *ensemble* light curves from TESS FFI data using the methods outlined in `Wainer+2023 <https://ui.adsabs.harvard.edu/>`_. While originally designed for analysis of star clusters, it can be used to create ensemble light curves for any given aperture.
 
 Use the links below to learn how to install ``elk``, explore different features in our detailed tutorials or peruse our exhaustive API documentation. We're excited to see how you will apply ``elk`` to your own work!
 
