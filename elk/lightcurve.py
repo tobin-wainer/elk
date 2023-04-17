@@ -516,7 +516,7 @@ class TESSCutLightcurve(BasicLightcurve):
             self.dm = lk.DesignMatrixCollection([pca_dm, cbv_dm_use])
         else:
             spline_dm1 = lk.designmatrix.create_spline_matrix(self.quality_tpfs.time.value, 
-                                                              _knots=self.spline_knots)
+                                                              n_knots=self.spline_knots)
             self.dm = lk.DesignMatrixCollection([pca_dm, cbv_dm_use, spline_dm1])
 
         full_model, systematics_model, self.full_model_normalized = np.ones((3, *self.quality_tpfs.shape))
