@@ -512,12 +512,9 @@ class TESSCutLightcurve(BasicLightcurve):
         # We can make a simple basis-spline (b-spline) model for astrophysical variability. This will be a
         # flexible, smooth model. The number of knots is important, we want to only correct for very long
         # term variability that looks like systematics, so here we have 5 knots, the smaller the better
-        if self.spline_knots is None:
-            self.dm = lk.DesignMatrixCollection([pca_dm, cbv_dm_use])
-        else:
-            spline_dm1 = lk.designmatrix.create_spline_matrix(self.quality_tpfs.time.value, 
-                                                              n_knots=self.spline_knots)
-            self.dm = lk.DesignMatrixCollection([pca_dm, cbv_dm_use, spline_dm1])
+        spline_dm1 = lk.designmatrix.create_spline_matrix(self.quality_tpfs.time.value, 
+                                                            n_knots=self.spline_knots)
+        self.dm = lk.DesignMatrixCollection([pca_dm, cbv_dm_use, spline_dm1])
 
         full_model, systematics_model, self.full_model_normalized = np.ones((3, *self.quality_tpfs.shape))
         if self.progress_bar:
@@ -530,13 +527,9 @@ class TESSCutLightcurve(BasicLightcurve):
                     full_model[:, i, j], self.full_model_normalized[:, i, j] = self.correct_pixel(i, j)
 
         # Calculate Lightcurves
-        
-        # scattered_light_model_corrected_lightcurve=(self.quality_tpfs - scattered_light[:, None, None]).to_lightcurve(aperture_mask=self.star_mask)
-        # systematics_model_corrected_lightcurve=(self.quality_tpfs - systematics_model).to_lightcurve(aperture_mask=self.star_mask)
-        if self.spline_knots is not None:
-            self.corrected_lc = (self.quality_tpfs - full_model).to_lightcurve(aperture_mask=self.star_mask)
-        else:
-            self.corrected_lc = (self.quality_tpfs - systematics_model).to_lightcurve(aperture_mask=self.star_mask)
+        self.corrected_lc = (self.quality_tpfs - full_model).to_lightcurve(aperture_mask=self.star_mask)
+            
+        self.systematics_corrected_lc = (self.quality_tpfs - systematics_model).to_lightcurve(aperture_mask=self.star_mask)
 
         self.hdu = fits.BinTableHDU.from_columns(
             [fits.Column(name='time', format='D', array=self.corrected_lc.time.value),
@@ -584,10 +577,6 @@ class TESSCutLightcurve(BasicLightcurve):
         # extract just the systematics components
         systematics_model = (r1.diagnostic_lightcurves['PCA'].flux.value
                              + r1.diagnostic_lightcurves['CBVs'].flux.value)
-        
-        # if user doesn't want a spline correct then all three models are identical and we immediately return
-        if self.spline_knots is None:
-            return systematics_model, systematics_model, systematics_model
 
         # normalise the model for scattered light test
         full_model_normalized = systematics_model + r1.diagnostic_lightcurves['spline'].flux.value
