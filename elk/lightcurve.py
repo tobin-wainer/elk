@@ -721,16 +721,16 @@ class TESSCutLightcurve(BasicLightcurve):
             axes[2].axvspan(lower, upper, color="lightgrey", zorder=-1)
 
             # save and close the figure and move on to the next
-            fig.savefig(os.path.join(output_path, f'{identifier}_gif_plot_frame_{i}.png'),
+            fig.savefig(os.path.join(output_path, 'diagnostics', f'{identifier}_gif_plot_frame_{i}.png'),
                         bbox_inches="tight")
             plt.close(fig)
             i += 1
 
         # convert individual frames to a GIF
-        gif_path = os.path.join(output_path, f'{identifier}_pixel_power_gif.gif')
+        gif_path = os.path.join(output_path, 'diagnostics', f'{identifier}_pixel_power_gif.gif')
         with imageio.get_writer(gif_path, mode='I', fps=2.5) as writer:
             for i in range(len(edges)):
-                writer.append_data(imageio.imread(os.path.join(output_path,
+                writer.append_data(imageio.imread(os.path.join(output_path, 'diagnostics',
                                                                f'{identifier}_gif_plot_frame_{i}.png')))
                 
         #get GIF back
