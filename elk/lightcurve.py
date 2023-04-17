@@ -688,13 +688,21 @@ class TESSCutLightcurve(BasicLightcurve):
                                                        radius=pixel_radius)
 
                 if query_result is not None:
+                    # only selecting the columns we want
+                    query_result = query_result['MAIN_ID', 'RA', 'DEC', 'V__vartyp', 'V__Vmax', 'V__R_Vmax',
+                                                'V__magtyp', 'V__UpVmin', 'V__Vmin', 'V__R_Vmin',
+                                                'V__UpPeriod', 'V__period', 'V__R_period', 'OTYPE', 'FLUX_V']
+                    
+                    # add columns indicating which peak these are associated with
                     query_result.add_column(Column([round(center, 3)]), name='peak_freq')
                     query_result.add_column(Column([round(lower, 3)]), name='peak_lower')
                     query_result.add_column(Column([round(upper, 3)]), name='peak_upper')
 
                     if simbad_results is None:
+                        # if this is the first query then just save
                         simbad_results = query_result
                     else:
+                        # otherwise concatenate with previous queries
                         simbad_results = vstack([simbad_results, query_result],
                                                 join_type="exact", metadata_conflicts="silent")
 
@@ -726,11 +734,14 @@ class TESSCutLightcurve(BasicLightcurve):
             plt.close(fig)
             i += 1
 
+        # convert SIMBAD object types to strings so we can save
+        simbad_results["MAIN_ID"] = simbad_results["MAIN_ID"].astype("str")
+        simbad_results["OTYPE"] = simbad_results["OTYPE"].astype("str")
+
         # save the simbad results
         simbad_results.write(os.path.join(output_path, 'diagnostics',
-                                          f'{identifier}_simbad_results.fits'), format="fits")
-
-        print(simbad_results)
+                                          f'{identifier}_simbad_results.hdf5'),
+                             path='data', serialize_meta=True)
 
         # convert individual frames to a GIF
         gif_path = os.path.join(output_path, 'diagnostics', f'{identifier}_pixel_power_gif.gif')
@@ -742,4 +753,4 @@ class TESSCutLightcurve(BasicLightcurve):
         #get GIF back
         gif = HTML(f'<img src="{gif_path}">')
 
-        return gif, query_result 
+        return gif, simbad_results 
