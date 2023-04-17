@@ -685,9 +685,10 @@ class TESSCutLightcurve(BasicLightcurve):
                 var_Simbad = Simbad()
                 var_Simbad.add_votable_fields('v*', 'otype', 'flux(V)')
 
+                # query SIMBAD for a region that fully encloses the pixel 
                 query_result= var_Simbad.query_region(coord.SkyCoord(ra=ra, dec=dec,
                                                       unit=(u.deg, u.deg), frame='icrs'),
-                                                      radius=0.008 * u.deg)
+                                                      radius=(TESS_RESOLUTION * (1 * u.pixel)).to(u.deg).value * np.sqrt(2))
                 
                 
                 
@@ -696,7 +697,8 @@ class TESSCutLightcurve(BasicLightcurve):
                     query_result.add_column([round(center, 2)], name='Peak_Frequency')
                 else: query_result= 'No Simbad Objects in Pixel'
 
-                print(query_result)
+                gif_path = os.path.join(output_path, f'{identifier}_Simbad_Query.fits')
+                query_result.write()
 
             # plot the max power in each pixel in the same range as the right panel
             im = axes[1].imshow(pixel_max_power, extent=list(axes[0].get_xlim()) + list(axes[0].get_ylim()),
@@ -736,4 +738,4 @@ class TESSCutLightcurve(BasicLightcurve):
         #get GIF back
         gif=HTML(f'<img src="{gif_path}">')
 
-        return gif
+        return gif, query_result 
