@@ -584,6 +584,10 @@ class TESSCutLightcurve(BasicLightcurve):
         # extract just the systematics components
         systematics_model = (r1.diagnostic_lightcurves['PCA'].flux.value
                              + r1.diagnostic_lightcurves['CBVs'].flux.value)
+        
+        # if user doesn't want a spline correct then all three models are identical and we immediately return
+        if self.spline_knots is None:
+            return systematics_model, systematics_model, systematics_model
 
         # normalise the model for scattered light test
         full_model_normalized = systematics_model + r1.diagnostic_lightcurves['spline'].flux.value
