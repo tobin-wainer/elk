@@ -18,7 +18,8 @@ __all__ = ["EnsembleLC", "from_fits"]
 class EnsembleLC:
     def __init__(self, radius, cluster_age=None, output_path="./", identifier=None, location=None,
                  percentile=80, cutout_size=99, scattered_light_frequency=5, n_pca=6, verbose=False,
-                 just_one_lc=False, minimize_memory=False, ignore_previous_downloads=False, debug=False):
+                 just_one_lc=False, minimize_memory=False, ignore_previous_downloads=False,
+                 ignore_scattered_light=False):
         """Class for generating light curves from TESS cutouts
 
         Parameters
@@ -55,8 +56,8 @@ class EnsembleLC:
             them from memory, by default False
         ignore_previous_downloads : `bool`, optional
             Whether to ignore previously downloaded and corrected light curves            
-        debug : `bool`, optional
-            #TODO DELETE THIS, by default False
+        ignore_scattered_light : `bool`, optional
+            Whether to ignore the scattered light test, by default False
         """
 
         # make sure that some sort of identifier has been provided
@@ -123,7 +124,7 @@ class EnsembleLC:
         self.verbose = verbose
         self.just_one_lc = just_one_lc
         self.minimize_memory = minimize_memory
-        self.debug = debug
+        self.ignore_scattered_light = ignore_scattered_light
 
         if self.output_path is not None and self.previously_downloaded() and not ignore_previous_downloads:
             if self.verbose:
@@ -186,7 +187,7 @@ class EnsembleLC:
                 os.remove(os.path.join(self.output_path, 'cache', self.callable, 'tesscut', file))
 
     def scattered_light(self, quality_tpfs, full_model_Normalized):
-        if self.debug:
+        if self.ignore_scattered_light:
             return False
         # regular grid covering the domain of the data
         X, Y = np.meshgrid(np.arange(0, self.cutout_size, 1), np.arange(0, self.cutout_size, 1))
