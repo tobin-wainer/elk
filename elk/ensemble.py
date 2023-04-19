@@ -94,9 +94,9 @@ class EnsembleLC:
         # document how many observations failed each one of our quality tests
         self.n_failed_download = 0
         self.n_bad_quality = 0
-        self.n_scattered_light = 0
         self.n_good_obs = 0
         self.which_sectors_good = []
+        self.scattered_light_sectors = []
 
         # check main output folder
         if output_path is not None and not os.path.exists(output_path):
@@ -276,13 +276,26 @@ class EnsembleLC:
                 self.n_bad_quality += 1
                 continue
 
+            # don't bother correcting if this sector is known to fail scattered light test (from previous run)
+            if lc.sector in self.scattered_light_sectors:
+                if self.verbose:
+                    print_failure('  Sector know to fail scattered light test, skipping')
+                self.scattered_light_sectors.append(lc.sector)
+
+                # if minimizing memory usage then delete the failed lightcurve
+                if self.minimize_memory:
+                    del lc
+
+                continue
+
+            # perform the lightcurve correction!
             lc.correct_lc()
 
             scattered_light_test = self.scattered_light(lc.quality_tpfs, lc.full_model_normalized)
             if scattered_light_test:
                 if self.verbose:
                     print_failure("  Failed Scattered Light Test")
-                self.n_scattered_light += 1
+                self.scattered_light_sectors.append(lc.sector)
 
                 # if minimizing memory usage then delete the failed lightcurve
                 if self.minimize_memory:
@@ -356,9 +369,8 @@ class EnsembleLC:
             # download and correct lightcurves
             self.get_lcs()
 
-            # clear out the cache after we're done making lightcurves
-            if self.minimize_memory:
-                self.clear_cache()
+        # ensure only unique sectors in scattered light list
+        self.scattered_light_sectors = list(set(self.scattered_light_sectors))
 
         # write out the full file
         hdr = fits.Header()
@@ -371,7 +383,9 @@ class EnsembleLC:
         hdr["n_good"] = (self.n_good_obs, "Number of good observations")
         hdr["n_dlfail"] = (self.n_failed_download, "Number of failed downloads")
         hdr["n_qual"] = (self.n_bad_quality, "Number of obs near edge")
-        hdr["n_scatt"] = (self.n_scattered_light, "Number of obs with scattered light")
+        hdr["n_scatt"] = (len(self.scattered_light_sectors), "Number of obs with scattered light")
+        hdr["scat_sec"] = (','.join([str(sec) for sec in self.scattered_light_sectors]),
+                           "Sectors that fail the scattered light test")
         empty_primary = fits.PrimaryHDU(header=hdr)
         hdul = fits.HDUList([empty_primary] + [lc.hdu for lc in self.lcs if lc is not None])
         if self.output_path is not None:
@@ -384,7 +398,8 @@ class EnsembleLC:
                       'n_obs': [self.sectors_available], 'n_good_obs': [self.n_good_obs],
                       'which_sectors_good': [[lc.sector for lc in self.lcs if lc is not None]],
                       'n_failed_download': [self.n_failed_download], 'n_bad_quality': [self.n_bad_quality],
-                      'n_scatter_light': [self.n_scattered_light],
+                      'n_scatter_light': [len(self.scattered_light_sectors)],
+                      'scattered_light_sectors': [self.scattered_light_sectors],
                       'lc_lens': [[len(lc.corrected_lc) for lc in self.lcs if lc is not None]]})
 
 
@@ -407,7 +422,8 @@ def from_fits(filepath, existing_class=None, **kwargs):
         new_ecl.n_good_obs = details.header["n_good"]
         new_ecl.n_failed_download = details.header["n_dlfail"]
         new_ecl.n_bad_quality = details.header["n_qual"]
-        new_ecl.n_scattered_light = details.header["n_scatt"]
+        new_ecl.scattered_light_sectors = [] if details.header["scat_sec"] == ""\
+            else list(map(int, details.header["scat_sec"].split(',')))
 
         new_ecl.lcs = [BasicLightcurve(fits_path=filepath, hdu_index=hdu_ind)
                        for hdu_ind in range(1, len(hdul))]
