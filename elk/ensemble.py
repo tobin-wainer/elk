@@ -254,6 +254,8 @@ class EnsembleLC:
                 if self.verbose:
                     print_failure('  Failed Download')
                 self.n_failed_download += 1
+                if self.minimize_memory:
+                    del tpfs
                 continue
 
             # check whether this lightcurve has already been corrected
@@ -267,7 +269,8 @@ class EnsembleLC:
                 self.which_sectors_good.append(tpfs.sector)
                 if not self.minimize_memory:
                     self.lcs[sector_ind] = BasicLightcurve(fits_path=lc_path, hdu_index=1)
-
+                else:
+                    del tpfs
                 continue
 
             lc = TESSCutLightcurve(tpfs=tpfs, radius=self.radius, cutout_size=self.cutout_size,
@@ -279,6 +282,8 @@ class EnsembleLC:
                 if self.verbose:
                     print_failure('  Failed General Quality Test')
                 self.n_bad_quality += 1
+                if self.minimize_memory:
+                    del lc, tpfs
                 continue
 
             # don't bother correcting if this sector is known to fail scattered light test (from previous run)
@@ -289,7 +294,7 @@ class EnsembleLC:
 
                 # if minimizing memory usage then delete the failed lightcurve
                 if self.minimize_memory:
-                    del lc
+                    del lc, tpfs
 
                 continue
 
@@ -304,7 +309,7 @@ class EnsembleLC:
 
                 # if minimizing memory usage then delete the failed lightcurve
                 if self.minimize_memory:
-                    del lc
+                    del lc, tpfs
 
                 continue
             else:
@@ -341,7 +346,7 @@ class EnsembleLC:
 
                 # if minimizing memory usage then delete the lightcurve since it's already been saved
                 if self.minimize_memory:
-                    del lc
+                    del lc, tpfs
 
                 # otherwise make it accessible to the class as a whole
                 else:
