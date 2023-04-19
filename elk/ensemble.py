@@ -16,9 +16,10 @@ __all__ = ["EnsembleLC", "from_fits"]
 
 
 class EnsembleLC:
-    def __init__(self, radius, cluster_age, output_path="./", identifier=None, location=None,
-                 percentile=80, cutout_size=99, scattered_light_frequency=5, n_pca=6, spline_knots=5, verbose=False,
-                 just_one_lc=False, minimize_memory=False, ignore_previous_downloads=False, debug=False):
+    def __init__(self, radius, cluster_age=None, output_path="./", identifier=None, location=None,
+                 percentile=80, cutout_size=99, scattered_light_frequency=5, n_pca=6, spline_knots=5,
+                 verbose=False, just_one_lc=False, minimize_memory=False, ignore_previous_downloads=False,
+                 ignore_scattered_light=False):
         """Class for generating light curves from TESS cutouts
 
         Parameters
@@ -26,7 +27,7 @@ class EnsembleLC:
         radius : `float`
             Radius of the cluster. If a `float` is given then unit is assumed to be degrees. Otherwise, I'll
             convert your unit to what I need.
-        cluster_age : `float`
+        cluster_age : `float`, optional
             Age of the cluster. If a `float` is given then unit is assumed to be dex. Otherwise, I'll
             convert your unit to what I need.
         output_path : `str`, optional
@@ -58,8 +59,8 @@ class EnsembleLC:
             them from memory, by default False
         ignore_previous_downloads : `bool`, optional
             Whether to ignore previously downloaded and corrected light curves            
-        debug : `bool`, optional
-            #TODO DELETE THIS, by default False
+        ignore_scattered_light : `bool`, optional
+            Whether to ignore the scattered light test, by default False
         """
 
         # make sure that some sort of identifier has been provided
@@ -72,11 +73,34 @@ class EnsembleLC:
             radius = radius.to(u.deg).value
 
         # convert cluster age to dex if it has units
-        if hasattr(cluster_age, 'unit'):
+        if cluster_age is not None and hasattr(cluster_age, 'unit'):
             if cluster_age.unit == u.dex:
                 cluster_age = cluster_age.value
             else:
                 cluster_age = np.log10(cluster_age.to(u.yr).value)
+
+        self.lcs = []
+        self.output_path = output_path
+        self.radius = radius
+        self.cluster_age = cluster_age
+        self.identifier = identifier
+        self.location = location
+        self.percentile = percentile
+        self.cutout_size = cutout_size
+        self.scattered_light_frequency = scattered_light_frequency
+        self.n_pca = n_pca
+        self.spline_knots = spline_knots
+        self.verbose = verbose
+        self.just_one_lc = just_one_lc
+        self.minimize_memory = minimize_memory
+        self.ignore_scattered_light = ignore_scattered_light
+
+        # document how many observations failed each one of our quality tests
+        self.n_failed_download = 0
+        self.n_bad_quality = 0
+        self.n_good_obs = 0
+        self.which_sectors_good = []
+        self.scattered_light_sectors = []
 
         # check main output folder
         if output_path is not None and not os.path.exists(output_path):
@@ -93,9 +117,9 @@ class EnsembleLC:
         if minimize_memory:
             if not os.path.exists(os.path.join(output_path, 'cache')):
                 os.mkdir(os.path.join(output_path, 'cache'))
-            if not os.path.exists(os.path.join(output_path, 'cache', self.callable)):
-                os.mkdir(os.path.join(output_path, 'cache', self.callable))
-                os.mkdir(os.path.join(output_path, 'cache', self.callable, 'tesscut'))
+            if not os.path.exists(os.path.join(output_path, 'cache', self.identifier)):
+                os.mkdir(os.path.join(output_path, 'cache', self.identifier))
+                os.mkdir(os.path.join(output_path, 'cache', self.identifier, 'tesscut'))
 
         # check subfolders
         self.save = {"lcs": False, "figures": False}
@@ -113,35 +137,13 @@ class EnsembleLC:
                 else:
                     self.save[key] = True
 
-        self.lcs = []
-        self.output_path = output_path
-        self.radius = radius
-        self.cluster_age = cluster_age
-        self.identifier = identifier
-        self.location = location
-        self.percentile = percentile
-        self.cutout_size = cutout_size
-        self.scattered_light_frequency = scattered_light_frequency
-        self.n_pca = n_pca
-        self.spline_knots = spline_knots
-        self.verbose = verbose
-        self.just_one_lc = just_one_lc
-        self.minimize_memory = minimize_memory
-        self.debug = debug
-
+        # load in previous data if desired
         if self.output_path is not None and self.previously_downloaded() and not ignore_previous_downloads:
             if self.verbose:
                 print(("Found previously corrected data for this target, loading it! "
                        "(Set `ignore_previous_downloads=True` to ignore data)"))
             self = from_fits(os.path.join(self.output_path, "Corrected_LCs",
                                           self.identifier + "output_table.fits"), existing_class=self)
-
-        # We are also going to document how many observations failed each one of our quality tests
-        self.n_failed_download = 0
-        self.n_bad_quality = 0
-        self.n_scattered_light = 0
-        self.n_good_obs = 0
-        self.which_sectors_good = []
 
     def __repr__(self):
         return f"<{self.__class__.__name__} - {self.identifier}>"
@@ -176,7 +178,7 @@ class EnsembleLC:
         # use a Try statement to see if we can download the cluster data
         try:
             download_dir = os.path.join(self.output_path,
-                                        'cache', self.callable) if self.minimize_memory else None
+                                        'cache', self.identifier) if self.minimize_memory else None
             tpfs = self.tess_search_results[ind].download(cutout_size=(self.cutout_size, self.cutout_size),
                                                           download_dir=download_dir)
         except (lk.search.SearchError, FileNotFoundError):
@@ -185,12 +187,12 @@ class EnsembleLC:
 
     def clear_cache(self):
         """Clear the folder containing manually cached lightkurve files"""
-        for file in os.listdir(os.path.join(self.output_path, 'cache', self.callable, 'tesscut')):
+        for file in os.listdir(os.path.join(self.output_path, 'cache', self.identifier, 'tesscut')):
             if file.endswith(".fits"):
-                os.remove(os.path.join(self.output_path, 'cache', self.callable, 'tesscut', file))
+                os.remove(os.path.join(self.output_path, 'cache', self.identifier, 'tesscut', file))
 
     def scattered_light(self, quality_tpfs, full_model_Normalized):
-        if self.debug:
+        if self.ignore_scattered_light:
             return False
         # regular grid covering the domain of the data
         X, Y = np.meshgrid(np.arange(0, self.cutout_size, 1), np.arange(0, self.cutout_size, 1))
@@ -252,6 +254,8 @@ class EnsembleLC:
                 if self.verbose:
                     print_failure('  Failed Download')
                 self.n_failed_download += 1
+                if self.minimize_memory:
+                    del tpfs
                 continue
 
             # check whether this lightcurve has already been corrected
@@ -265,7 +269,8 @@ class EnsembleLC:
                 self.which_sectors_good.append(tpfs.sector)
                 if not self.minimize_memory:
                     self.lcs[sector_ind] = BasicLightcurve(fits_path=lc_path, hdu_index=1)
-
+                else:
+                    del tpfs
                 continue
 
             lc = TESSCutLightcurve(tpfs=tpfs, radius=self.radius, cutout_size=self.cutout_size,
@@ -277,19 +282,34 @@ class EnsembleLC:
                 if self.verbose:
                     print_failure('  Failed General Quality Test')
                 self.n_bad_quality += 1
+                if self.minimize_memory:
+                    del lc, tpfs
                 continue
 
+            # don't bother correcting if this sector is known to fail scattered light test (from previous run)
+            if lc.sector in self.scattered_light_sectors:
+                if self.verbose:
+                    print_failure('  Sector know to fail scattered light test, skipping')
+                self.scattered_light_sectors.append(lc.sector)
+
+                # if minimizing memory usage then delete the failed lightcurve
+                if self.minimize_memory:
+                    del lc, tpfs
+
+                continue
+
+            # perform the lightcurve correction!
             lc.correct_lc()
 
             scattered_light_test = self.scattered_light(lc.quality_tpfs, lc.full_model_normalized)
             if scattered_light_test:
                 if self.verbose:
                     print_failure("  Failed Scattered Light Test")
-                self.n_scattered_light += 1
+                self.scattered_light_sectors.append(lc.sector)
 
                 # if minimizing memory usage then delete the failed lightcurve
                 if self.minimize_memory:
-                    del lc
+                    del lc, tpfs
 
                 continue
             else:
@@ -326,7 +346,7 @@ class EnsembleLC:
 
                 # if minimizing memory usage then delete the lightcurve since it's already been saved
                 if self.minimize_memory:
-                    del lc
+                    del lc, tpfs
 
                 # otherwise make it accessible to the class as a whole
                 else:
@@ -338,8 +358,13 @@ class EnsembleLC:
                                "`self.just_one_lc=True`"))
                     break
 
+        # if minimizing memory, need to load back in the basic corrected lightcurves for the good sectors
         if self.minimize_memory:
             self.clear_cache()
+            self.lcs = [BasicLightcurve(fits_path=os.path.join(self.output_path, "Corrected_LCs",
+                                                               self.identifier + f"_lc_{sector}.fits"),
+                                        hdu_index=1)
+                        for sector in self.which_sectors_good]
 
     def lightcurves_summary_file(self):
         """Generate lightcurve output files for the cluster and save them in `self.output_path`
@@ -354,16 +379,8 @@ class EnsembleLC:
             # download and correct lightcurves
             self.get_lcs()
 
-            # clear out the cache after we're done making lightcurves
-            if self.minimize_memory:
-                self.clear_cache()
-
-        # now we need to load back in the basic corrected lightcurves for the good sectors
-        if self.minimize_memory:
-            self.lcs = [BasicLightcurve(fits_path=os.path.join(self.output_path, "Corrected_LCs",
-                                                               self.identifier + f"_lc_{sector}.fits"),
-                                        hdu_index=1)
-                        for sector in self.which_sectors_good]
+        # ensure only unique sectors in scattered light list
+        self.scattered_light_sectors = list(set(self.scattered_light_sectors))
 
         # write out the full file
         hdr = fits.Header()
@@ -376,7 +393,9 @@ class EnsembleLC:
         hdr["n_good"] = (self.n_good_obs, "Number of good observations")
         hdr["n_dlfail"] = (self.n_failed_download, "Number of failed downloads")
         hdr["n_qual"] = (self.n_bad_quality, "Number of obs near edge")
-        hdr["n_scatt"] = (self.n_scattered_light, "Number of obs with scattered light")
+        hdr["n_scatt"] = (len(self.scattered_light_sectors), "Number of obs with scattered light")
+        hdr["scat_sec"] = (','.join([str(sec) for sec in self.scattered_light_sectors]),
+                           "Sectors that fail the scattered light test")
         empty_primary = fits.PrimaryHDU(header=hdr)
         hdul = fits.HDUList([empty_primary] + [lc.hdu for lc in self.lcs if lc is not None])
         if self.output_path is not None:
@@ -389,7 +408,8 @@ class EnsembleLC:
                       'n_obs': [self.sectors_available], 'n_good_obs': [self.n_good_obs],
                       'which_sectors_good': [[lc.sector for lc in self.lcs if lc is not None]],
                       'n_failed_download': [self.n_failed_download], 'n_bad_quality': [self.n_bad_quality],
-                      'n_scatter_light': [self.n_scattered_light],
+                      'n_scatter_light': [len(self.scattered_light_sectors)],
+                      'scattered_light_sectors': [self.scattered_light_sectors],
                       'lc_lens': [[len(lc.corrected_lc) for lc in self.lcs if lc is not None]]})
 
 
@@ -412,9 +432,11 @@ def from_fits(filepath, existing_class=None, **kwargs):
         new_ecl.n_good_obs = details.header["n_good"]
         new_ecl.n_failed_download = details.header["n_dlfail"]
         new_ecl.n_bad_quality = details.header["n_qual"]
-        new_ecl.n_scattered_light = details.header["n_scatt"]
+        new_ecl.scattered_light_sectors = [] if details.header["scat_sec"] == ""\
+            else list(map(int, details.header["scat_sec"].split(',')))
 
         new_ecl.lcs = [BasicLightcurve(fits_path=filepath, hdu_index=hdu_ind)
                        for hdu_ind in range(1, len(hdul))]
+        new_ecl.which_sectors_good = [lc.sector for lc in new_ecl.lcs if lc is not None]
 
     return new_ecl

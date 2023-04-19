@@ -7,7 +7,7 @@ c = EnsembleLC(output_path="../../output",
                radius=.046,
                cluster_age=7.75,
                cutout_size=10,
-               debug=True,
+               ignore_scattered_light=True,
                verbose=True,
                minimize_memory=True)
 
