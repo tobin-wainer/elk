@@ -16,7 +16,7 @@ __all__ = ["EnsembleLC", "from_fits"]
 
 
 class EnsembleLC:
-    def __init__(self, radius, cluster_age, output_path="./", identifier=None, location=None,
+    def __init__(self, radius, cluster_age=None, output_path="./", identifier=None, location=None,
                  percentile=80, cutout_size=99, scattered_light_frequency=5, n_pca=6, verbose=False,
                  just_one_lc=False, minimize_memory=False, ignore_previous_downloads=False, debug=False):
         """Class for generating light curves from TESS cutouts
@@ -26,7 +26,7 @@ class EnsembleLC:
         radius : `float`
             Radius of the cluster. If a `float` is given then unit is assumed to be degrees. Otherwise, I'll
             convert your unit to what I need.
-        cluster_age : `float`
+        cluster_age : `float`, optional
             Age of the cluster. If a `float` is given then unit is assumed to be dex. Otherwise, I'll
             convert your unit to what I need.
         output_path : `str`, optional
@@ -69,7 +69,7 @@ class EnsembleLC:
             radius = radius.to(u.deg).value
 
         # convert cluster age to dex if it has units
-        if hasattr(cluster_age, 'unit'):
+        if cluster_age is not None and hasattr(cluster_age, 'unit'):
             if cluster_age.unit == u.dex:
                 cluster_age = cluster_age.value
             else:
