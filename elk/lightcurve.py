@@ -584,6 +584,8 @@ class TESSCutLightcurve(BasicLightcurve):
 
         # add all the components and adjust by the mean to avoid being centered around 0
         full_model = full_model_normalized - r1.diagnostic_lightcurves['spline'].flux.value.mean()
+        
+        del r1
 
         return systematics_model, full_model, full_model_normalized
 
