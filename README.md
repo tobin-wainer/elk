@@ -1,31 +1,33 @@
-# ELK
-This Repo is for the Python package ELK, making integrated light, lightcurves from TESS Data.
+.. figure:: _static/main-logo.png
+   :figwidth: 40%
+   :alt: logo for package
+   :align: right
+   :class: only-dark
 
-This package includes the pipelines I created to download and correct ensemble light curves of star clusters in TESS data. While I have used ELK for star cluster science, it can be used by any user to create ensemble light curves for any given aperature. 
+.. figure:: _static/main-logo.png
+   :figwidth: 40%
+   :alt: logo for package
+   :align: right
+   :class: only-light
 
+***
+elk
+***
 
-## TODO: Update all of this
+Welcome to the **E**\ nsemble **L**\ ight\ **K**\ urve Python package, or simply ``elk``!
 
-A detailed account and example of each pipeline can be found in the Jupyter Notebooks titled "Detailed and Simple Pipeline to get Light curves", "Detailed and Simple Pipeline to Generate All Sector Lightcurves", and "Detailed and Simple Pipeline to Calculate Variability Statistics from Light Curves" respectively.
+This package allows you to download, correct, analyze and visualize *ensemble* light curves from TESS FFI data using the methods outlined in `Wainer+2023 <https://ui.adsabs.harvard.edu/>`_. While originally designed for analysis of star clusters, it can be used to create ensemble light curves for any given aperture.
 
-The pipeline which I recommend using is the one to generate all sector lightcurves. 
+Use the links below to learn how to install ``elk``, explore different features in our detailed tutorials or peruse our exhaustive API documentation. We're excited to see how you will apply ``elk`` to your own work!
 
-**THE FUNCTION TO INPORT AND USE IS "Generate_Lightcurves"** 
+.. toctree::
+   :maxdepth: 1
+   :titlesonly:
 
-**THIS CODE MUST BE INITIALIZED BY SETTING A "Path_to_Save_to" in the lightcurves_pipeline.py file**
+   pages/install
+   pages/getting_started
+   pages/tutorials
+   pages/modules
+   pages/cite
 
-There is also a function called "Access Lightcurve" which can be used to pull the lightcurve table, and the figure of the lightcurve.
-
-
-For the pipeline to get any sector Light curve:
-All of the required functions are combined in the one_lightcurve_pipeline.py file 
-
-**THE ONLY FUNCTION TO INPORT AND USE IS "Get_Corrected_Lightcurve"** 
-This can be accoplished by using the following code: 'from Ensemble_LC.lightcurves_pipeline import Get_Corrected_Lightcurve'
-
-**THIS CODE MUST BE INITIALIZED BY SETTING A "Path_to_Save_to" in the one_lightcurve_pipeline.py file**
-
-For the Variabilty state pipeline:
-All of the required functions are in the variable_stats.py file. Each of these funcitons can be used seperately, or a comprehensive table can be made using the "Get_Variable_Stats_Table" function.  
-
-**THIS CODE MUST BE INITIALIZED BY SETTING A "Path_to_Save_to" AND A "Path_to_Read_in_LCs" in the variable_stats.py file**
+We'd also like to acknowledge the absolutely splendid work of `Samantha-Lynn Martinez <https://www.samanthalynnmartinez.com/>`_ in designing the ``elk`` logo. You can find more of her portfolio `here <https://www.samanthalynnmartinez.com/illustrationdesign>`_ and we encourage you to reach out to her for any design needs you have!
