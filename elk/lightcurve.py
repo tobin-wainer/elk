@@ -628,19 +628,20 @@ class TESSCutLightcurve(BasicLightcurve):
         if query_simbad:
             simbad_results = None
 
-        # convert input into bin edges
+        # convert input into bin bounds
         if isinstance(freq_bins, str):
             assert freq_bins == "auto", "`freq_bins` can only be a str if it is equal to 'auto'"
             self.to_periodogram()
-            edges = list(zip(self.stats["peak_left_edge"], self.stats["peak_right_edge"]))
+            bounds = list(zip(self.stats["peak_left_edge"], self.stats["peak_freqs"],
+                              self.stats["peak_right_edge"]))
         else:
             if isinstance(freq_bins, int):
                 freq_bins = np.logspace(min(self.periodogram_freqs), max(self.periodogram_freqs), freq_bins)
-            edges = list(zip(freq_bins[:-1], freq_bins[1:]))
+            bounds = list(zip(freq_bins[:-1], 0.5 *(freq_bins[:-1] + freq_bins[1:]), freq_bins[1:]))
 
         # create a separate frame for each frequency bin
         i = 0
-        for lower, upper in edges:
+        for lower, center, upper in bounds:
             if lower > max(self.periodogram_freqs):
                 continue
             # start a three panel figure
@@ -666,7 +667,7 @@ class TESSCutLightcurve(BasicLightcurve):
 
             # create a mask for the frequency range
             frequency_mask = (self.periodogram_freqs >= lower) & (self.periodogram_freqs < upper)
-            center = np.median(self.periodogram_freqs[frequency_mask])
+
             # get power in each pixel that is within the aperture and for the given frequency range
             pixel_powers = aperture_powers[:, frequency_mask]
 
@@ -754,7 +755,7 @@ class TESSCutLightcurve(BasicLightcurve):
         # convert individual frames to a GIF
         gif_path = os.path.join(output_path, 'diagnostics', f'{identifier}_pixel_power_gif.gif')
         with imageio.get_writer(gif_path, mode='I', fps=2.5) as writer:
-            for i in range(len(edges)):
+            for i in range(len(bounds)):
                 writer.append_data(imageio.imread(os.path.join(output_path, 'diagnostics',
                                                                f'{identifier}_gif_plot_frame_{i}.png')))
                 
