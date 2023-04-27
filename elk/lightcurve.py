@@ -630,7 +630,7 @@ class TESSCutLightcurve(BasicLightcurve):
         if isinstance(freq_bins, str):
             assert freq_bins == "auto", "`freq_bins` can only be a str if it is equal to 'auto'"
             self.to_periodogram()
-            bounds = list(zip(self.stats["peak_left_edge"], self.stats["peak_freq"],
+            bounds = list(zip(self.stats["peak_left_edge"], self.stats["peak_freqs"],
                               self.stats["peak_right_edge"]))
         else:
             if isinstance(freq_bins, int):
