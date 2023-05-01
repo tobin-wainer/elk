@@ -38,8 +38,8 @@ class Test(unittest.TestCase):
 
     def test_von_neumann(self):
         """check that VNR is larger for something with a higher SD"""
-        x = random_walk(walk_prob=0.01)
-        y = random_walk(walk_prob=0.2)
+        x = random_walk(walk_prob=0.001)
+        y = random_walk(walk_prob=0.3)
 
         self.assertTrue(stats.von_neumann_ratio(x) < stats.von_neumann_ratio(y))
 
