@@ -277,8 +277,7 @@ def autocorr(time, flux, largest_gap_allowed=0.25, plot=False, **plot_kwargs):
     acf, confint = calc_acf(ac_flux, nlags=len(ac_flux) - 1, alpha=0.3173)
     plot_times = ac_time - ac_time[0]
 
-    # find max autocorrelction (cut first value since it is meaningless in this context)
-    # TODO: Tobin check this^
+    # find max autocorrelation (cut first value since it is meaningless in this context)
     max_ac = max(acf[plot_times > plot_times[argrelextrema(acf, np.less)[0][0]]])
     acf_stats = {
         "max_autocorrelation": max_ac,
