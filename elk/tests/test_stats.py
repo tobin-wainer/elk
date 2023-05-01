@@ -5,7 +5,7 @@ from scipy.stats import skewnorm
 
 N_VALS = 10000
 
-def random_walk(start=0, steps=N_VALS, step_size=0.01, walk_prob=0.05):
+def random_walk(start=0, steps=N_VALS, step_size=0.01, walk_prob=0.05, reset_every=None):
     walk = np.empty(steps)
     walk[0] = start
     choices = np.random.rand(steps)
@@ -16,6 +16,8 @@ def random_walk(start=0, steps=N_VALS, step_size=0.01, walk_prob=0.05):
             walk[i] = walk[i - 1] - step_size
         else:
             walk[i] = walk[i - 1]
+        if reset_every is not None and i > 0 and (i % reset_every) == 0:
+            walk[i] = start
     return walk
 
 
@@ -72,3 +74,13 @@ class Test(unittest.TestCase):
         test = stats.periodogram(t, y, np.repeat(0.01 / N_VALS, len(y)),
                                  frequencies=f_range, freq_thresh=0.5, n_bootstrap=10)
         self.assertTrue(np.abs(period - test[-1]["freq_at_max_power"]) < 1e-2)
+
+    def test_autocorrelation(self):
+        """test that data is less correlated when resetting random walks"""
+        x = stats.autocorr(np.arange(N_VALS),
+                           random_walk(),
+                           largest_gap_allowed=np.inf)
+        y = stats.autocorr(np.arange(N_VALS),
+                           random_walk(reset_every=10),
+                           largest_gap_allowed=np.inf)
+        self.assertTrue(x[3]["rms"] > y[3]["rms"])
