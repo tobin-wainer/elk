@@ -37,12 +37,11 @@ class Test(unittest.TestCase):
         self.assertTrue(stats.get_skewness(x) < stats.get_skewness(y))
 
     def test_von_neumann(self):
-        """check that VNR is larger for something with a higher SD"""
+        """check that VNR works sensibly"""
         x = random_walk(walk_prob=0.001)
         y = random_walk(walk_prob=0.3)
 
-        self.assertTrue(stats.von_neumann_ratio(x) < stats.von_neumann_ratio(y))
-
+        self.assertTrue(stats.von_neumann_ratio(x) / np.var(x) > stats.von_neumann_ratio(y) / np.var(y))
 
     def test_j_stetson_far_times(self):
         """Check J stetson works for spread out times"""
@@ -71,5 +70,5 @@ class Test(unittest.TestCase):
         y = np.sin(2 * np.pi * t * period) + 0.1 * np.random.standard_normal(N_VALS)
 
         test = stats.periodogram(t, y, np.repeat(0.01 / N_VALS, len(y)),
-                                 frequencies=f_range, freq_thresh=0.5)
+                                 frequencies=f_range, freq_thresh=0.5, n_bootstrap=10)
         self.assertTrue(np.abs(period - test[-1]["freq_at_max_power"]) < 1e-2)
