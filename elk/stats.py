@@ -1,7 +1,6 @@
 import numpy as np
 import scipy
 from statsmodels.tsa.stattools import acf as calc_acf
-import os
 
 from scipy.signal import find_peaks, peak_widths, argrelextrema
 import scipy.linalg
