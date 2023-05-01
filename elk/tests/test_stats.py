@@ -62,3 +62,14 @@ class Test(unittest.TestCase):
         
         self.assertTrue(stats.J_stetson(t, mag, mag_err) < stats.J_stetson(t, big_var_mag, mag_err))
         
+    def test_periodogram(self):
+        """test that we can recover the correct period"""
+        f_range = np.linspace(0.05, 0.95, 1000)
+        period = np.random.choice(f_range)
+
+        t = np.sort(N_VALS * np.random.rand(N_VALS))
+        y = np.sin(2 * np.pi * t * period) + 0.1 * np.random.standard_normal(N_VALS)
+
+        test = stats.periodogram(t, y, np.repeat(0.01 / N_VALS, len(y)),
+                                 frequencies=f_range, freq_thresh=0.5)
+        self.assertTrue(np.abs(period - test[-1]["freq_at_max_power"]) < 1e-2)
