@@ -224,13 +224,15 @@ class BasicLightcurve():
             table_dict[k] = [v]
         return Table(table_dict)
 
-    def plot(self, title="auto", **kwargs):
+    def plot(self, title="auto", fold_period=None, **kwargs):
         """Plot the lightcurve
 
         Parameters
         ----------
         title : `str`, optional
             Title for the plot, by default "auto" (resulting in "Lightcurve for Sector ...")
+        fold_period : `float`, optional
+            Period on which to fold the light curve, if None then no folding is done, by default None
         **kwargs: `various`
             Keyword arguments passed to :class:`elk.plot.plot_lightcurve`
 
@@ -241,7 +243,7 @@ class BasicLightcurve():
         """
         title = f'Lightcurve for Sector {self.sector}' if title == "auto" else title
         return elkplot.plot_lightcurve(self.corrected_lc.time.value, self.corrected_lc.flux.value,
-                                       title=title, **kwargs)
+                                       title=title, fold_period=fold_period, **kwargs)
 
     def plot_periodogram(self, frequencies=None, title="auto", **kwargs):
         """Plot the periodogram for the lightcurve

@@ -122,7 +122,7 @@ def plot_acf(time, acf, acf_percentiles=None, title=None, fig=None, ax=None, sho
     return fig, ax
 
 
-def plot_lightcurve(time, flux, title=None, fig=None, ax=None, show=True, save_path=None,
+def plot_lightcurve(time, flux, fold_period=None, title=None, fig=None, ax=None, show=True, save_path=None,
                     color='k', linewidth=0.5, **kwargs):
     """Plot a lightcurve
 
@@ -132,6 +132,8 @@ def plot_lightcurve(time, flux, title=None, fig=None, ax=None, show=True, save_p
         Times of observations
     flux : :class:`~numpy.ndarray`
         Flux of each observation
+    fold_period : `float`, optional
+        Period on which to fold the light curve, if None then no folding is done, by default None
     title : `str`, optional
         A title for the plot, by default None
     fig : :class:`~matplotlib.pyplot.Figure`, optional
@@ -158,6 +160,13 @@ def plot_lightcurve(time, flux, title=None, fig=None, ax=None, show=True, save_p
     if fig is None or ax is None:
         fig, ax = plt.subplots()
     ax.set_title(title)
+
+    # if a period is given then fold based on that period and re-sort
+    if fold_period is not None:
+        time = (time - time[0]) % fold_period
+        order = np.argsort(time)
+        time = time[order]
+        flux = flux[order]
 
     ax.plot(time, flux, color=color, linewidth=linewidth, **kwargs)
 
