@@ -1,7 +1,6 @@
 import numpy as np
 import scipy
 from statsmodels.tsa.stattools import acf as calc_acf
-import os
 
 from scipy.signal import find_peaks, peak_widths, argrelextrema
 import scipy.linalg
@@ -11,8 +10,8 @@ from astropy.timeseries import LombScargle
 
 from .plot import plot_acf
 
-__all__ = ["get_MAD", "get_range", "get_skewness", "von_neumann_ratio", "J_stetson", "periodogram",
-           "longest_contiguous_chunk", "autocorr"]
+__all__ = ["get_MAD", "get_sigmaG", "get_range", "get_skewness", "von_neumann_ratio", "J_stetson",
+           "periodogram", "longest_contiguous_chunk", "autocorr"]
 
 
 def get_MAD(flux):
@@ -30,6 +29,25 @@ def get_MAD(flux):
     """
     return np.median(np.abs(flux - np.median(flux)))
 
+def get_sigmaG(flux):
+    """Compute a rank-based estimate of the standard deviation
+
+    Follows https://www.astroml.org/modules/generated/astroML.stats.sigmaG.html
+
+    Parameters
+    ----------
+    flux : :class:`~numpy.ndarray`
+        Array of fluxes
+
+    Returns
+    -------
+    sigmaG : `float`
+        sigmaG (a robust estimate of the standard deviation sigma)
+    """
+    # This factor is ~ 1 / (2 sqrt(2) erf^-1(0.5))
+    sigmaG_factor = 0.74130110925280102
+    percs = np.percentile(flux, [25, 75])
+    return sigmaG_factor * (percs[1] - percs[0])
 
 def get_range(flux, bottom_percentile, upper_percentile):
     # TODO: Ask Tobin but it seems like this will only work for an array of fluxes of length 100?
@@ -197,6 +215,10 @@ def periodogram(time, flux, flux_err, frequencies, n_bootstrap=100, max_peaks=25
     max_power = max(med)
     freq_at_max_power = frequencies[med == max_power][0]
 
+    ls = LombScargle(time, flux, flux_err)
+    ls.power(frequencies)
+    fap = ls.false_alarm_probability(power=max_power)
+
     lsp_stats = {
         "max_power": max_power,
         "freq_at_max_power": freq_at_max_power,
@@ -205,7 +227,8 @@ def periodogram(time, flux, flux_err, frequencies, n_bootstrap=100, max_peaks=25
         "peak_right_edge": peak_right,
         "power_at_peaks": power_at_peaks,
         "n_peaks": n_peaks,
-        "ratio_of_power_at_high_v_low_freq": ratio_of_power_at_high_v_low_freq
+        "ratio_of_power_at_high_v_low_freq": ratio_of_power_at_high_v_low_freq,
+        "FAP": fap
     }
 
     return med, percentiles[1:], lsp_stats
@@ -277,8 +300,7 @@ def autocorr(time, flux, largest_gap_allowed=0.25, plot=False, **plot_kwargs):
     acf, confint = calc_acf(ac_flux, nlags=len(ac_flux) - 1, alpha=0.3173)
     plot_times = ac_time - ac_time[0]
 
-    # find max autocorrelction (cut first value since it is meaningless in this context)
-    # TODO: Tobin check this^
+    # find max autocorrelation (cut first value since it is meaningless in this context)
     max_ac = max(acf[plot_times > plot_times[argrelextrema(acf, np.less)[0][0]]])
     acf_stats = {
         "max_autocorrelation": max_ac,
