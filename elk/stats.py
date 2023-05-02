@@ -10,8 +10,8 @@ from astropy.timeseries import LombScargle
 
 from .plot import plot_acf
 
-__all__ = ["get_MAD", "get_range", "get_skewness", "von_neumann_ratio", "J_stetson", "periodogram",
-           "longest_contiguous_chunk", "autocorr"]
+__all__ = ["get_MAD", "get_sigmaG", "get_range", "get_skewness", "von_neumann_ratio", "J_stetson",
+           "periodogram", "longest_contiguous_chunk", "autocorr"]
 
 
 def get_MAD(flux):
@@ -29,6 +29,25 @@ def get_MAD(flux):
     """
     return np.median(np.abs(flux - np.median(flux)))
 
+def get_sigmaG(flux):
+    """Compute a rank-based estimate of the standard deviation
+
+    Follows https://www.astroml.org/modules/generated/astroML.stats.sigmaG.html
+
+    Parameters
+    ----------
+    flux : :class:`~numpy.ndarray`
+        Array of fluxes
+
+    Returns
+    -------
+    sigmaG : `float`
+        sigmaG (a robust estimate of the standard deviation sigma)
+    """
+    # This factor is ~ 1 / (2 sqrt(2) erf^-1(0.5))
+    sigmaG_factor = 0.74130110925280102
+    percs = np.percentile(flux, [25, 75])
+    return sigmaG_factor * (percs[1] - percs[0])
 
 def get_range(flux, bottom_percentile, upper_percentile):
     # TODO: Ask Tobin but it seems like this will only work for an array of fluxes of length 100?
