@@ -5,7 +5,7 @@ import numpy as np
 __all__ = ["plot_periodogram", "plot_acf", "plot_lightcurve"]
 
 
-def plot_periodogram(frequencies, power, power_percentiles, peak_freqs,
+def plot_periodogram(frequencies, power, power_percentiles, peak_freqs, fap=None,
                      fig=None, ax=None, show=True, title=None, save_path=None):
     """Plot a periodogram
 
@@ -20,6 +20,8 @@ def plot_periodogram(frequencies, power, power_percentiles, peak_freqs,
         (4, len(power)) then assumed to be 1- and 2-sigma values in order of (2-, 1-, 1+, 2+)
     peak_freqs : :class:`~numpy.ndarray`
         Frequencies at which peaks occur
+    fap : `float`, optional
+        False alarm probability for the maximum power peak - plotted as horizontal line if provided, by default None
     fig : :class:`~matplotlib.pyplot.Figure`, optional
         Figure on which to plot, if either `fig` or `ax` is None then new ones are created, by default None
     ax : :class:`~matplotlib.pyplot.AxesSubplot`, optional
@@ -57,6 +59,9 @@ def plot_periodogram(frequencies, power, power_percentiles, peak_freqs,
     # add vertical lines at each of the peaks
     ax.vlines(x=peak_freqs, ymin=np.zeros(len(peak_freqs)),
               ymax=power[np.in1d(frequencies, peak_freqs)], linestyle='--', color="tab:red")
+
+    if fap is not None:
+        ax.axhline(fap, color="gold", label=f"False alarm probability ({fap:1.2e})")
 
     # set scales and labels
     ax.set_xscale('log')
@@ -122,7 +127,7 @@ def plot_acf(time, acf, acf_percentiles=None, title=None, fig=None, ax=None, sho
     return fig, ax
 
 
-def plot_lightcurve(time, flux, title=None, fig=None, ax=None, show=True, save_path=None,
+def plot_lightcurve(time, flux, fold_period=None, title=None, fig=None, ax=None, show=True, save_path=None,
                     color='k', linewidth=0.5, **kwargs):
     """Plot a lightcurve
 
@@ -132,6 +137,8 @@ def plot_lightcurve(time, flux, title=None, fig=None, ax=None, show=True, save_p
         Times of observations
     flux : :class:`~numpy.ndarray`
         Flux of each observation
+    fold_period : `float`, optional
+        Period on which to fold the light curve, if None then no folding is done, by default None
     title : `str`, optional
         A title for the plot, by default None
     fig : :class:`~matplotlib.pyplot.Figure`, optional
@@ -158,6 +165,13 @@ def plot_lightcurve(time, flux, title=None, fig=None, ax=None, show=True, save_p
     if fig is None or ax is None:
         fig, ax = plt.subplots()
     ax.set_title(title)
+
+    # if a period is given then fold based on that period and re-sort
+    if fold_period is not None:
+        time = (time - time[0]) % fold_period
+        order = np.argsort(time)
+        time = time[order]
+        flux = flux[order]
 
     ax.plot(time, flux, color=color, linewidth=linewidth, **kwargs)
 

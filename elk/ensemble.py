@@ -19,7 +19,7 @@ class EnsembleLC:
     def __init__(self, radius, cluster_age=None, output_path="./", identifier=None, location=None,
                  percentile=80, cutout_size=99, scattered_light_frequency=5, n_pca=6, spline_knots=5,
                  verbose=False, just_one_lc=False, minimize_memory=False, ignore_previous_downloads=False,
-                 ignore_scattered_light=False):
+                 ignore_scattered_light=False, auto_confirm=False):
         """Class for generating light curves from TESS cutouts
 
         Parameters
@@ -61,6 +61,8 @@ class EnsembleLC:
             Whether to ignore previously downloaded and corrected light curves            
         ignore_scattered_light : `bool`, optional
             Whether to ignore the scattered light test, by default False
+        auto_confirm : `bool`, optional
+            Whether to automatically confirm any message that you'd usually ask the user, by default False
         """
 
         # make sure that some sort of identifier has been provided
@@ -104,9 +106,12 @@ class EnsembleLC:
 
         # check main output folder
         if output_path is not None and not os.path.exists(output_path):
-            print_warning(f"There is no output folder at the path that you supplied ({output_path})")
-            create_it = input(("  Would you like me to create it for you? "
-                               "(If not then no files will be saved) [Y/n]"))
+            if auto_confirm:
+                create_it = "y"
+            else:
+                print_warning(f"There is no output folder at the path that you supplied ({output_path})")
+                create_it = input(("  Would you like me to create it for you? "
+                                   "(If not then no files will be saved) [Y/n]"))
             if create_it == "" or create_it.lower() == "y":
                 # create the folder
                 os.mkdir(output_path)
@@ -127,9 +132,12 @@ class EnsembleLC:
             for subpath, key in zip(["Corrected_LCs", os.path.join("Figures", "LCs")], ["lcs", "figures"]):
                 path = os.path.join(output_path, subpath)
                 if not os.path.exists(path):
-                    print_warning(f"The necessary subfolder at ({path}) does not exist")
-                    create_it = input(("  Would you like me to create it for you? "
-                                       "(If not then these files will not be saved) [Y/n]"))
+                    if auto_confirm:
+                        create_it = "y"
+                    else:
+                        print_warning(f"The necessary subfolder at ({path}) does not exist")
+                        create_it = input(("  Would you like me to create it for you? "
+                                           "(If not then these files will not be saved) [Y/n]"))
                     if create_it == "" or create_it.lower() == "y":
                         # create the folder
                         os.makedirs(path)

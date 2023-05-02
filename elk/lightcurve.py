@@ -82,6 +82,7 @@ class BasicLightcurve():
         # prep some class variables for the stats helper functions
         self.stats = {}
         self.periodogram_freqs = periodogram_freqs
+        self.periodogram_peaks = None
         self.ac_time = None
 
     def __repr__(self):
@@ -109,6 +110,12 @@ class BasicLightcurve():
         """The median absolute deviation of the normalised flux of the lightcurve"""
         self.stats["MAD"] = elkstats.get_MAD(self.normalized_flux)
         return self.stats["MAD"]
+    
+    @property
+    def sigmaG(self):
+        """The sigmaG of the normalised flux of the lightcurve"""
+        self.stats["sigmaG"] = elkstats.get_sigmaG(self.normalized_flux)
+        return self.stats["sigmaG"]
 
     @property
     def skewness(self):
@@ -162,6 +169,7 @@ class BasicLightcurve():
                                              self.corrected_lc.flux_err.value, frequencies=frequencies,
                                              **kwargs)
         self.periodogram_freqs = frequencies
+        self.periodogram_peaks = lsp_stats["peak_freqs"]
         self.stats.update(lsp_stats)
         return self.periodogram, self.periodogram_percentiles, lsp_stats
 
@@ -190,7 +198,7 @@ class BasicLightcurve():
         stats : `dict`
             A dictionary of the various statistics (also stored in ``self.stats``)
         """
-        (self.rms, self.std, self.MAD, self.skewness,
+        (self.rms, self.std, self.MAD, self.sigmaG, self.skewness,
             self.von_neumann_ratio, self.J_stetson(),
             self.to_periodogram(frequencies=np.arange(0.04, 11, 0.01)), self.to_acf())
         return self.stats
@@ -218,13 +226,15 @@ class BasicLightcurve():
             table_dict[k] = [v]
         return Table(table_dict)
 
-    def plot(self, title="auto", **kwargs):
+    def plot(self, title="auto", fold_period=None, **kwargs):
         """Plot the lightcurve
 
         Parameters
         ----------
         title : `str`, optional
             Title for the plot, by default "auto" (resulting in "Lightcurve for Sector ...")
+        fold_period : `float`, optional
+            Period on which to fold the light curve, if None then no folding is done, by default None
         **kwargs: `various`
             Keyword arguments passed to :class:`elk.plot.plot_lightcurve`
 
@@ -235,7 +245,7 @@ class BasicLightcurve():
         """
         title = f'Lightcurve for Sector {self.sector}' if title == "auto" else title
         return elkplot.plot_lightcurve(self.corrected_lc.time.value, self.corrected_lc.flux.value,
-                                       title=title, **kwargs)
+                                       title=title, fold_period=fold_period, **kwargs)
 
     def plot_periodogram(self, frequencies=None, title="auto", **kwargs):
         """Plot the periodogram for the lightcurve
@@ -263,7 +273,7 @@ class BasicLightcurve():
         return elkplot.plot_periodogram(frequencies=self.periodogram_freqs, power=self.periodogram,
                                         power_percentiles=self.periodogram_percentiles,
                                         peak_freqs=self.stats["peak_freqs"][:self.stats["n_peaks"]],
-                                        title=title, **kwargs)
+                                        fap=self.stats["FAP"], title=title, **kwargs)
 
     def plot_acf(self, title="auto", **kwargs):
         """Plot the autocorrelation function
