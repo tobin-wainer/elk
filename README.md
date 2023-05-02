@@ -1,33 +1,25 @@
-.. figure:: _static/main-logo.png
-   :figwidth: 40%
-   :alt: logo for package
-   :align: right
-   :class: only-dark
+<p align="center">
+    <img width="500", src="https://raw.githubusercontent.com/tobin-wainer/elk/main/docs/_static/main-logo.png">
+</p>
 
-.. figure:: _static/main-logo.png
-   :figwidth: 40%
-   :alt: logo for package
-   :align: right
-   :class: only-light
+<h2 align="center">
+    <b>E</b>nsemble <b>L</b>ight<b>K</b>urve
+    <br>
+    <a href='https://elk.readthedocs.io/en/latest/?badge=latest'>
+        <img src='https://readthedocs.org/projects/elk/badge/?version=latest' alt='Documentation Status' />
+    </a>
+    <a href="mailto:tobinw@uw.edu?cc=tomwagg@uw.edu">
+        <img src="https://img.shields.io/badge/contact-authors-blueviolet.svg?style=flat" alt="Email the authors"/>
+    </a>
+</h2>
 
-***
-elk
-***
+<p align="center">
+    This package allows you to download, correct, analyze and visualize *ensemble* light curves from TESS FFI data using the methods outlined in <a href="https://ui.adsabs.harvard.edu">Wainer+2023</a>. While originally designed for analysis of star clusters, it can be used to create ensemble light curves for any given aperture.
+</p>
 
-Welcome to the **E**\ nsemble **L**\ ight\ **K**\ urve Python package, or simply ``elk``!
+### Installation
+Put simply? `pip install astro-elk`! But we recommend creating a conda environment first to ensure everything goes smoothly! Check out the installation instructions [here](https://elk.readthedocs.io/en/latest/install.html) to learn exactly how to install `elk`
 
-This package allows you to download, correct, analyze and visualize *ensemble* light curves from TESS FFI data using the methods outlined in `Wainer+2023 <https://ui.adsabs.harvard.edu/>`_. While originally designed for analysis of star clusters, it can be used to create ensemble light curves for any given aperture.
 
-Use the links below to learn how to install ``elk``, explore different features in our detailed tutorials or peruse our exhaustive API documentation. We're excited to see how you will apply ``elk`` to your own work!
-
-.. toctree::
-   :maxdepth: 1
-   :titlesonly:
-
-   pages/install
-   pages/getting_started
-   pages/tutorials
-   pages/modules
-   pages/cite
-
-We'd also like to acknowledge the absolutely splendid work of `Samantha-Lynn Martinez <https://www.samanthalynnmartinez.com/>`_ in designing the ``elk`` logo. You can find more of her portfolio `here <https://www.samanthalynnmartinez.com/illustrationdesign>`_ and we encourage you to reach out to her for any design needs you have!
+### Logo design
+We'd also like to acknowledge the absolutely splendid work of <a href="https://www.samanthalynnmartinez.com">Samantha-Lynn Martinez</a> in designing the `elk` logo. You can find more of her portfolio <a href="https://www.samanthalynnmartinez.com/illustrationdesign">here</a> and we encourage you to reach out to her for any design needs you have!
