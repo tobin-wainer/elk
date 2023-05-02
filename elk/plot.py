@@ -5,7 +5,7 @@ import numpy as np
 __all__ = ["plot_periodogram", "plot_acf", "plot_lightcurve"]
 
 
-def plot_periodogram(frequencies, power, power_percentiles, peak_freqs,
+def plot_periodogram(frequencies, power, power_percentiles, peak_freqs, fap=None,
                      fig=None, ax=None, show=True, title=None, save_path=None):
     """Plot a periodogram
 
@@ -20,6 +20,8 @@ def plot_periodogram(frequencies, power, power_percentiles, peak_freqs,
         (4, len(power)) then assumed to be 1- and 2-sigma values in order of (2-, 1-, 1+, 2+)
     peak_freqs : :class:`~numpy.ndarray`
         Frequencies at which peaks occur
+    fap : `float`, optional
+        False alarm probability for the maximum power peak - plotted as horizontal line if provided, by default None
     fig : :class:`~matplotlib.pyplot.Figure`, optional
         Figure on which to plot, if either `fig` or `ax` is None then new ones are created, by default None
     ax : :class:`~matplotlib.pyplot.AxesSubplot`, optional
@@ -57,6 +59,9 @@ def plot_periodogram(frequencies, power, power_percentiles, peak_freqs,
     # add vertical lines at each of the peaks
     ax.vlines(x=peak_freqs, ymin=np.zeros(len(peak_freqs)),
               ymax=power[np.in1d(frequencies, peak_freqs)], linestyle='--', color="tab:red")
+
+    if fap is not None:
+        ax.axhline(fap, color="gold", label=f"False alarm probability ({fap:1.2e})")
 
     # set scales and labels
     ax.set_xscale('log')

@@ -215,6 +215,10 @@ def periodogram(time, flux, flux_err, frequencies, n_bootstrap=100, max_peaks=25
     max_power = max(med)
     freq_at_max_power = frequencies[med == max_power][0]
 
+    ls = LombScargle(time, flux, flux_err)
+    ls.power(frequencies)
+    fap = ls.false_alarm_probability(power=max_power)
+
     lsp_stats = {
         "max_power": max_power,
         "freq_at_max_power": freq_at_max_power,
@@ -223,7 +227,8 @@ def periodogram(time, flux, flux_err, frequencies, n_bootstrap=100, max_peaks=25
         "peak_right_edge": peak_right,
         "power_at_peaks": power_at_peaks,
         "n_peaks": n_peaks,
-        "ratio_of_power_at_high_v_low_freq": ratio_of_power_at_high_v_low_freq
+        "ratio_of_power_at_high_v_low_freq": ratio_of_power_at_high_v_low_freq,
+        "FAP": fap
     }
 
     return med, percentiles[1:], lsp_stats

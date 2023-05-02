@@ -273,7 +273,7 @@ class BasicLightcurve():
         return elkplot.plot_periodogram(frequencies=self.periodogram_freqs, power=self.periodogram,
                                         power_percentiles=self.periodogram_percentiles,
                                         peak_freqs=self.stats["peak_freqs"][:self.stats["n_peaks"]],
-                                        title=title, **kwargs)
+                                        fap=self.stats["FAP"], title=title, **kwargs)
 
     def plot_acf(self, title="auto", **kwargs):
         """Plot the autocorrelation function
