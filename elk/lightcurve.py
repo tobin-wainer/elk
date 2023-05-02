@@ -109,6 +109,12 @@ class BasicLightcurve():
         """The median absolute deviation of the normalised flux of the lightcurve"""
         self.stats["MAD"] = elkstats.get_MAD(self.normalized_flux)
         return self.stats["MAD"]
+    
+    @property
+    def sigmaG(self):
+        """The sigmaG of the normalised flux of the lightcurve"""
+        self.stats["sigmaG"] = elkstats.get_sigmaG(self.normalized_flux)
+        return self.stats["sigmaG"]
 
     @property
     def skewness(self):
@@ -190,7 +196,7 @@ class BasicLightcurve():
         stats : `dict`
             A dictionary of the various statistics (also stored in ``self.stats``)
         """
-        (self.rms, self.std, self.MAD, self.skewness,
+        (self.rms, self.std, self.MAD, self.sigmaG, self.skewness,
             self.von_neumann_ratio, self.J_stetson(),
             self.to_periodogram(frequencies=np.arange(0.04, 11, 0.01)), self.to_acf())
         return self.stats
