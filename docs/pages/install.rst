@@ -15,6 +15,10 @@ Installation
         #. Activate the environment by running::
 
                 conda activate elk
+        
+        #. Pip install elk!::
+                
+                pip install astro-elk
 
         and you should be all set! Now it's time to learn how about `Getting Started <getting_started>`__ with ``elk``.
 
@@ -26,7 +30,7 @@ Installation
         We don't recommend installing ``elk`` without a conda environment but if you prefer to do it this
         way then all you need to do is run::
 
-            pip install elk-astro
+            pip install astro-elk
 
         and you should be all set! Now it's time to learn how about `Getting Started <getting_started>`__ with ``elk``.
 
