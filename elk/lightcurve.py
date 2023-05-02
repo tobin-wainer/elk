@@ -82,6 +82,7 @@ class BasicLightcurve():
         # prep some class variables for the stats helper functions
         self.stats = {}
         self.periodogram_freqs = periodogram_freqs
+        self.periodogram_peaks = None
         self.ac_time = None
 
     def __repr__(self):
@@ -168,6 +169,7 @@ class BasicLightcurve():
                                              self.corrected_lc.flux_err.value, frequencies=frequencies,
                                              **kwargs)
         self.periodogram_freqs = frequencies
+        self.periodogram_peaks = lsp_stats["peak_freqs"]
         self.stats.update(lsp_stats)
         return self.periodogram, self.periodogram_percentiles, lsp_stats
 
