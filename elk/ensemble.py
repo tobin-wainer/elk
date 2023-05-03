@@ -417,7 +417,7 @@ class EnsembleLC:
                       'which_sectors_good': [[lc.sector for lc in self.lcs if lc is not None]],
                       'n_failed_download': [self.n_failed_download], 'n_bad_quality': [self.n_bad_quality],
                       'n_scatter_light': [len(self.scattered_light_sectors)],
-                      'scattered_light_sectors': [self.scattered_light_sectors if self.scattered_light_sectors is not None else 'None'],
+                      'scattered_light_sectors': [self.scattered_light_sectors if self.scattered_light_sectors is not None else 0],
                       'lc_lens': [[len(lc.corrected_lc) for lc in self.lcs if lc is not None]]})
 
 
