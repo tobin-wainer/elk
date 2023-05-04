@@ -67,6 +67,7 @@ def plot_periodogram(frequencies, power, power_percentiles, peak_freqs, fap=None
     ax.set_xscale('log')
     ax.set_xlabel(r'Frequency $[1 / {\rm days}]$')
     ax.set_ylabel('Power')
+    ax.legend()
 
     # save and show if desired
     if save_path is not None:
@@ -168,7 +169,7 @@ def plot_lightcurve(time, flux, fold_period=None, title=None, fig=None, ax=None,
 
     # if a period is given then fold based on that period and re-sort
     if fold_period is not None:
-        time = (time - time[0]) % fold_period
+        time = ((time - time[0]) %fold_period)/fold_period
         order = np.argsort(time)
         time = time[order]
         flux = flux[order]
