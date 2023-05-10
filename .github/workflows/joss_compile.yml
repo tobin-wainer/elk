@@ -1,3 +1,5 @@
+# Workflow for compiling JOSS pdfs from markdown/bibtex files
+
 name: Compile JOSS paper
 
 on:
