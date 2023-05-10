@@ -73,6 +73,11 @@ table.dataframe {
     width: unset;
 }
 
+/* This fixes the weird looking issue with html tables in notebook output cells */
+.nboutput table {
+    width: auto;
+}
+
 .sphx-glr-thumbcontainer[tooltip]:hover::after {
     text-align: center;
 }
