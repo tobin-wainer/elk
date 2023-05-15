@@ -436,7 +436,9 @@ class EnsembleLC:
 def from_fits(filepath, existing_class=None, **kwargs):
     # if an existing class is not provided then create a new blank one
     if existing_class is None:
-        new_ecl = EnsembleLC(identifier="", radius=None, cluster_age=None, output_path=None, **kwargs)
+        # work out what the output path is based on the filepath input
+        output_path = os.path.join(*filepath.split("/")[:-2])
+        new_ecl = EnsembleLC(identifier="", radius=None, cluster_age=None, output_path=output_path, **kwargs)
     else:
         new_ecl = existing_class
 
