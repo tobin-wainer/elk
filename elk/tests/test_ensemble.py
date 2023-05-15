@@ -23,7 +23,7 @@ class Test(unittest.TestCase):
                        output_path="ensemble_test_output")
         
         # compute all of the lightcurves
-        c.lightcurves_summary_file()
+        c.create_output_table()
 
         # check the light curve has actually been computed
         self.assertTrue(c.lcs[0] is not None)
