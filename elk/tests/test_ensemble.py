@@ -31,4 +31,6 @@ class Test(unittest.TestCase):
         new_c = from_fits("ensemble_test_output/Corrected_LCs/NGC 6304output_table.fits")
         self.assertTrue(all(new_c.lcs[0].corrected_lc.flux == c.lcs[0].corrected_lc.flux))
 
+        self.assertTrue(new_c.ouput_path is not None)
+
         shutil.rmtree("ensemble_test_output")
