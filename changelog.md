@@ -1,6 +1,9 @@
 # `elk` Changelog
 This log keeps track of the changes implemented in each version of `elk`.
 
+## 0.5
+- There is a '/' at the start of the path for `from_fits`
+
 ## 0.4
 - Set the output path for classes read in using `from_fits`
 
