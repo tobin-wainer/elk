@@ -383,7 +383,7 @@ class EnsembleLC:
             The full lightcurves output table that was saved
         """
         # if data is available and the lightcurves have not yet been calculated
-        if self.has_tess_data() and self.lcs == []:
+        if self.lcs == [] and self.has_tess_data():
             # download and correct lightcurves
             self.get_lcs()
 
