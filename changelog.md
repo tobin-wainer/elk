@@ -1,6 +1,9 @@
 # `elk` Changelog
 This log keeps track of the changes implemented in each version of `elk`.
 
+## 0.6 
+- Updating the way the new summary table handles cases where there were no good sectors
+
 ## 0.5
 - There is a '/' at the start of the path for `from_fits`
 
