@@ -430,7 +430,7 @@ class EnsembleLC:
                       'n_failed_download': [self.n_failed_download], 'n_bad_quality': [self.n_bad_quality],
                       'n_scatter_light': [len(self.scattered_light_sectors)],
                       'scattered_light_sectors': [self.scattered_light_sectors if len(self.scattered_light_sectors) > 0 else -99],
-                      'lc_lens': [[len(lc.corrected_lc) for lc in self.lcs if lc is not None else -99]]})
+                      'lc_lens': [[len(lc.corrected_lc) if lc is not None else -99 for lc in self.lcs]]})
 
 
 def from_fits(filepath, existing_class=None, **kwargs):
