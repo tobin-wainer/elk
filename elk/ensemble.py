@@ -373,14 +373,12 @@ class EnsembleLC:
                                                                self.identifier + f"_lc_{sector}.fits"),
                                         hdu_index=1)
                         for sector in self.which_sectors_good]
-
-    def lightcurves_summary_file(self):
-        """Generate lightcurve output files for the cluster and save them in `self.output_path`
-
-        Returns
-        -------
-        output_table : :class:`~astropy.table.Table`
-            The full lightcurves output table that was saved
+            
+    def create_output_table(self):
+        """Generate lightcurve output summary table for the cluster and save in `self.output_path`
+        
+        If the `self.get_lcs()` pipeline has not been run (i.e. `self.lcs` is empty and there is data), this
+        will also automatically run the whole pipeline.
         """
         # if data is available and the lightcurves have not yet been calculated
         if self.lcs == [] and self.has_tess_data():
@@ -410,7 +408,21 @@ class EnsembleLC:
             hdul.writeto(os.path.join(self.output_path, 'Corrected_LCs/',
                          str(self.identifier) + 'output_table.fits'), overwrite=True)
 
-        # return a simple summary table that can be stacked with other clusters
+    def summary_table(self):
+        """Summarize ensemble light curve in an Astropy table
+
+        Returns
+        -------
+        output_table : :class:`~astropy.table.Table`
+            The full lightcurves output table that was saved
+        """
+        # if there isn't a saved output file then don't print anything (well, except an error)
+        if not os.path.isfile(os.path.join(self.output_path, 'Corrected_LCs/',
+                                           str(self.identifier) + 'output_table.fits')):
+            print_failure("Ensemble light curve pipeline not yet run, no table available, run `self.get_lcs`")
+            return None
+
+        # return a simple summary table that can be conveniently stacked with other clusters
         return Table({'name': [self.identifier], 'location': [self.location], 'radius': [self.radius],
                       'log_age': [self.cluster_age], 'has_data': [self.sectors_available > 0],
                       'n_obs': [self.sectors_available], 'n_good_obs': [self.n_good_obs],
