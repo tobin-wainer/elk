@@ -438,6 +438,8 @@ def from_fits(filepath, existing_class=None, **kwargs):
     if existing_class is None:
         # work out what the output path is based on the filepath input
         output_path = os.path.join(*filepath.split("/")[:-2])
+        if filepath[0] == "/":
+            output_path = "/" + output_path
         new_ecl = EnsembleLC(identifier="", radius=None, cluster_age=None, output_path=output_path, **kwargs)
     else:
         new_ecl = existing_class
