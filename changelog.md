@@ -1,6 +1,9 @@
 # `elk` Changelog
 This log keeps track of the changes implemented in each version of `elk`.
 
+## 0.8
+- Updating the summary table output to handle different length of columns in different clusters, and fix bug issues with 0.7
+
 ## 0.7 
 - Updating the summary table output to handle different length of columns in different clusters 
 
