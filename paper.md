@@ -19,7 +19,7 @@ authors:
     affiliation: "2" # (Multiple affiliations must be quoted)  
     - name: Gail Zasowski
     orcid: 0000-0001-6761-9359
-    affiliation: "1, 2" # (Multiple affiliations must be quoted)
+    affiliation: "2" # (Multiple affiliations must be quoted)
 affiliations:
  - name: Department of Astronomy, University of Washington, Box 351580, Seattle, WA 98195, USA
    index: 1
@@ -40,11 +40,11 @@ aas-journal: Astrophysical Journal <- The name of the AAS journal.
 
 `elk` (int**E**grated **L**ight **K**urve) is an open-source Python package designed for downloading and correcting *integrated* light curves from the Full Frame Images (FFI) of TESS data. We provide novel approaches for the analysis of heavily blended light curves. Our correction is in the form of aperture photometry, building upon the methodology of the Python package `lightkurve` [@lightkurve_collaboration_lightkurve_2018]. 
 
-Our correction techniques are able to account for spatially-transient scattered light from the Earth and Moon (using singular value decomposition methods and principle component analysis), known TESS telescope systems (encoding in co-trending basis vectors) and long-period astrophysical variability (through the application of a basis-spline model). Each of these techniques are flexible within \elk{} and can be tuned or turned off entirely.
+Our correction techniques are able to account for spatially-transient scattered light from the Earth and Moon (using singular value decomposition methods and principle component analysis), known TESS telescope systems (encoding in co-trending basis vectors) and long-period astrophysical variability (through the application of a basis-spline model). Each of these techniques are flexible within `elk` and can be tuned or turned off entirely.
 
-`elk` additionally has a range of features to analyze integrated light curves. We include a wide variety of variability metrics from across astronomical subfields, including the Stetson J statistic and von Neumann ratio [@stetson_center_1994; @von_neumann_distribution_1941]. `elk` features simple and useful diagnostic capabilities, with flexible functions for the creation and visualisation of bootstrapped Lomb-Scargle periodograms and autocorrelation functions. Moreover, one can use \elk{} to locate the precise sky position of a variable signature causing a feature in an integrated light curve, and identify likely candidate stars from SIMBAD [@wenger_simbad_2000]. Though we designed \elk{} with the intention of studying cluster variability, it has the flexibility to be applied to \textit{any} integrated study.
+`elk` additionally has a range of features to analyze integrated light curves. We include a wide variety of variability metrics from across astronomical subfields, including the Stetson J statistic and von Neumann ratio [@stetson_center_1994; @von_neumann_distribution_1941]. `elk` features simple and useful diagnostic capabilities, with flexible functions for the creation and visualisation of bootstrapped Lomb-Scargle periodograms and autocorrelation functions. Moreover, one can use `elk` to locate the precise sky position of a variable signature causing a feature in an integrated light curve, and identify likely candidate stars from SIMBAD [@wenger_simbad_2000]. Though we designed `elk` with the intention of studying cluster variability, it has the flexibility to be applied to *any* integrated study.
 
-Through \elk{}, users have a single package with which to create, analyse and diagnose reliable integrated light curves. 
+Through `elk`, users have a single package with which to create, analyse and diagnose reliable integrated light curves. 
 
 # Statement of need
 
