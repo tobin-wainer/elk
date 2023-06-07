@@ -1,5 +1,5 @@
 ---
-title: 'ELK: A python package for downloading, correcting, and analyzing TESS integrated light curves'
+title: 'ELK: A python package for correcting, analyzing, and diagnosing TESS integrated light curves'
 tags:
   - Python
   - astronomy
