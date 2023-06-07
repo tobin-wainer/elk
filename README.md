@@ -3,7 +3,7 @@
 </p>
 
 <h2 align="center">
-    Welcome to the <b>E</b>nsemble <b>L</b>ight<b>K</b>urve (a.k.a. elk) Python package!
+    Welcome to the int<b>E</b>grated <b>L</b>ight<b>K</b>urve (a.k.a. elk) Python package!
     <br>
     <a href='https://elk.readthedocs.io/en/latest/?badge=latest'>
         <img src='https://readthedocs.org/projects/elk/badge/?version=latest' alt='Documentation Status' />
@@ -14,7 +14,7 @@
 </h2>
 
 <p align="center">
-    This package allows you to download, correct, analyze and visualize <i>ensemble</i> light curves from TESS FFI data using the methods outlined in <a href="https://ui.adsabs.harvard.edu">Wainer+2023</a>. While originally designed for analysis of star clusters, it can be used to create ensemble light curves for any given aperture.
+    This package allows you to download, correct, analyze and visualize <i>integrated</i> light curves from TESS FFI data using the methods outlined in <a href="https://ui.adsabs.harvard.edu">Wainer+2023</a>. While originally designed for analysis of star clusters, it can be used to create integrated light curves for any given aperture.
 </p>
 
 ### Installation

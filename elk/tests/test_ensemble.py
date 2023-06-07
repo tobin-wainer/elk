@@ -23,12 +23,14 @@ class Test(unittest.TestCase):
                        output_path="ensemble_test_output")
         
         # compute all of the lightcurves
-        c.lightcurves_summary_file()
+        c.create_output_table()
 
         # check the light curve has actually been computed
         self.assertTrue(c.lcs[0] is not None)
 
         new_c = from_fits("ensemble_test_output/Corrected_LCs/NGC 6304output_table.fits")
         self.assertTrue(all(new_c.lcs[0].corrected_lc.flux == c.lcs[0].corrected_lc.flux))
+
+        self.assertTrue(new_c.output_path is not None)
 
         shutil.rmtree("ensemble_test_output")
