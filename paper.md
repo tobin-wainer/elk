@@ -14,10 +14,10 @@ authors:
   - name: Tom Wagg
     orcid: 0000-0001-6147-5761
     affiliation: "1" # (Multiple affiliations must be quoted)  
-    - name: Vijith Jacob Poovelil
+  - name: Vijith Jacob Poovelil
     orcid: 0000-0002-9831-3501
     affiliation: "2" # (Multiple affiliations must be quoted)  
-    - name: Gail Zasowski
+  - name: Gail Zasowski
     orcid: 0000-0001-6761-9359
     affiliation: "2" # (Multiple affiliations must be quoted)
 affiliations:
