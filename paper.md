@@ -1,5 +1,5 @@
 ---
-title: 'ELK: intEgraged Light-Kurve'
+title: 'ELK: intEgrated Light-Kurve'
 tags:
   - Python
   - astronomy
@@ -10,16 +10,16 @@ authors:
   - name: Tobin M. Wainer
     orcid: 0000-0001-6320-2230
     equal-contrib: true
-    affiliation: "1, 2" # (Multiple affiliations must be quoted)
+    affiliation: "1, 2"
   - name: Tom Wagg
     orcid: 0000-0001-6147-5761
-    affiliation: "1" # (Multiple affiliations must be quoted)  
+    affiliation: "1"
   - name: Vijith Jacob Poovelil
     orcid: 0000-0002-9831-3501
-    affiliation: "2" # (Multiple affiliations must be quoted)  
+    affiliation: "2"
   - name: Gail Zasowski
     orcid: 0000-0001-6761-9359
-    affiliation: "2" # (Multiple affiliations must be quoted)
+    affiliation: "2"
 affiliations:
  - name: Department of Astronomy, University of Washington, Box 351580, Seattle, WA 98195, USA
    index: 1
@@ -31,10 +31,8 @@ bibliography: paper.bib
 # Optional fields if submitting to a AAS journal too, see this blog post:
 # https://blog.joss.theoj.org/2018/12/a-new-collaboration-with-aas-publishing
 aas-doi: 10.3847/xxxxx <- update this with the DOI from AAS once you know it.
-aas-journal: Astrophysical Journal <- The name of the AAS journal.
+aas-journal: Astrophysical Journal
 ---
-
-# SAMPLE JOSS PAPER TO TEST GITHUB ACTION
 
 # Summary
 
@@ -48,9 +46,9 @@ Through `elk`, users have a single package with which to create, analyse and dia
 
 # Statement of need
 
-One important property of stars is their intrinsic photometric variability, including both high- and low-amplitude variations driven by coherent pulsations and other physical mechanisms like rotation. A great deal of the foundational work on stellar variability, especially of the low-amplitude variety, has been done in the Milky Way, including the recent revolution in asteroseismic measurements of stars across the Galaxy (e.g., @chaplin_asteroseismic_2013; @pinsonneault_second_2018). High-amplitude pulsational variables such as Cepheids and RR~Lyrae associated with clusters have long been used to measure distances and provide constraints on foreground extinction (e.g., @alonso-garcia_variable_2021). Famously, it was Cepheid variables that were used to measure the distance to M31 and to argue that the then-called ``island universes'' and ``spiral nebulae'' were in fact other galaxies [@hubble_spiral_1929]. Because of the high impact uses of stellar variability, a number of globular clusters in the Milky Way have detailed variable star membership catalogs (e.g., @clement_variable_2001). 
+One important property of stars is their intrinsic photometric variability, including both high- and low-amplitude variations driven by coherent pulsations and other physical mechanisms like rotation. A great deal of the foundational work on stellar variability, especially of the low-amplitude variety, has been done in the Milky Way, including the recent revolution in asteroseismic measurements of stars across the Galaxy (e.g., @chaplin_asteroseismic_2013; @pinsonneault_second_2018). High-amplitude pulsational variables such as Cepheids and RR~Lyrae associated with clusters have long been used to measure distances and provide constraints on foreground extinction (e.g., @alonso-garcia_variable_2021). Famously, it was Cepheid variables that were used to measure the distance to M31 and to argue that the then-called "island universes" and "spiral nebulae" were in fact other galaxies [@hubble_spiral_1929]. Because of the high impact uses of stellar variability, a number of globular clusters in the Milky Way have detailed variable star membership catalogs (e.g., @clement_variable_2001). 
 
-For environments where individual stars can not be resolved, the current standard approach to population analysis is through integrated light methods. However, the variability of unresolved stellar populations, i.e., of their integrated light, remain extremely limited. One analysis of unresolved field populations in M87 [@conroy_ubiquitous_2015] characterized the density of long-period variable stars, as a prediction for the age of the population. The main issue with using integrated light for variability encountered in this study was the blending of sources. There have been some efforts to address this issue (in TESS, relevant for this current work) for the light curves of individual resolved stars (e.g., @oelkers_precision_2018; @nardiello_psf-based_2020; @higgins_localizing_2022}. The work presented here in `elk`, sidesteps these issues by working directly with the integrated light curves.
+For environments where individual stars can not be resolved, the current standard approach to population analysis is through integrated light methods. However, the variability of unresolved stellar populations, i.e., of their integrated light, remain extremely limited. One analysis of unresolved field populations in M87 [@conroy_ubiquitous_2015] characterized the density of long-period variable stars, as a prediction for the age of the population. The main issue with using integrated light for variability encountered in this study was the blending of sources. There have been some efforts to address this issue (in TESS, relevant for this current work) for the light curves of individual resolved stars (e.g., @oelkers_precision_2018; @nardiello_psf-based_2020; @higgins_localizing_2022). The work presented here in `elk`, sidesteps these issues by working directly with the integrated light curves.
 
 While the primary mission of TESS was the discovery of exoplanets, the unrivaled precision of its time series photometry led to many significant advances in stellar science. For example, TESS has been influential in the recent surge of new astroseismology results (e.g., @handberg_tess_2021). TESS has observed nearly 200,000 stars from the TESS Input Catalog (TIC; @stassun_tess_2018), selected for the purpose of detecting small transiting planets. While the primary targets in TESS were selected to avoid blended sources, the FFIs contain tens of millions of sources, of which many are blended. These blended sources still contain bountiful astrophysical information and there have been many studies focused on blended star extraction (e.g., @oelkers_precision_2018; @nardiello_psf-based_2020; @higgins_localizing_2022). For the FFIs, more than 20 million sources for which relative photometry with $1\%$ photometric precision can be obtained [@ricker_transiting_2015, @huang_photometry_2020, @kunimoto_quick-look_2021]. These data provide a rich data set which have been used across astronomy subfields, and thus, the treatment of these data have been the topic of recent studies [@hattori_unpopular_2022].
 
@@ -64,7 +62,7 @@ The open source nature of this code allows users of all skill levels to generate
 
 # Acknowledgements
 
-We would like to recognize and thank Samantha-Lynn Martinez in designing the `elk` logo.
+We would like to recognize and thank Samantha-Lynn Martinez for designing the `elk` logo.
 TMW, GZ, and VJP acknowledge support by the Heising-Simons Foundation through grant 2019-1492. 
 This paper includes data collected with the TESS mission, obtained from the MAST data archive at the Space Telescope Science Institute (STScI). Funding for the TESS mission is provided by the NASA's Science Mission Directorate. STScI is operated by the Association of Universities for Research in Astronomy, Inc., under NASA contract NAS 5–26555.
 
