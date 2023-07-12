@@ -60,7 +60,7 @@ The primary mission of TESS was observing nearly 200,000 unblended stars from th
 
 While most studies in the literature seek to extract individual sources from blended photometry, `elk` bypasses the problems associated with this type of analysis and instead analyses the light curves on the whole. Given this structure, once a light curve is corrected and identified to have a variability signature, it becomes increasingly important to know where that signature is coming from within the aperture. `elk` uses novel methodology to identify which pixels in the aperture are contributing to specific peaks in the LSP, and will then return a SIMBAD query of the stars contained within that TESS pixel. This allows users to understand the impact specific stars have in their integrated light curves.
 
-The open source nature of this code allows users of all skill levels to generate precise light curves from aperture based sources, with minimal input. Then gives users the ability to fully diagnose the light curves in one convenient location. 
+The open source nature of this code allows users of all skill levels to generate precise light curves from aperture based sources, with minimal input. This gives users the ability to fully diagnose the light curves in one convenient location. 
 
 # Acknowledgements
 
