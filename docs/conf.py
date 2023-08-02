@@ -142,7 +142,7 @@ todo_include_todos = True
 nbsphinx_epilog = """
 {% set docname = env.doc2path(env.docname, base=None) %}
 .. note:: This tutorial was generated from a Jupyter notebook that can be
-          `found here <https://github.com/TomWagg/cosmic-gala/tree/main/docs/{{ docname }}>`_.
+          `found here <https://github.com/tobin-wainer/elk/tree/main/docs/{{ docname }}>`_.
 """
 nbsphinx_prompt_width = "0"
 
