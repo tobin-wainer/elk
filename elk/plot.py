@@ -110,12 +110,14 @@ def plot_acf(time, acf, acf_percentiles=None, title=None, fig=None, ax=None, sho
         fig, ax = plt.subplots(figsize=(10, 5))
     ax.set_title(title)
 
+    plot_time=time-time[0]
+
     # shade percentiles if desired
     if acf_percentiles is not None:
-        ax.fill_between(time, acf_percentiles[:, 0], acf_percentiles[:, 1], color='grey', alpha=.5)
+        ax.fill_between(plot_time, acf_percentiles[:, 0], acf_percentiles[:, 1], color='grey', alpha=.5)
 
     # plot autocorrelation function and label axes
-    ax.plot(time, acf)
+    ax.plot(plot_time, acf)
     ax.set_xlabel(r'Time $[\rm days]$')
     ax.set_ylabel("Autocorrelation")
 
