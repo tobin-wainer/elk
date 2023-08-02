@@ -9,7 +9,7 @@ ipython
 pandas
 tqdm
 h5py
-lightkurve
+lightkurve==2.4.0
 tables
 statsmodels
 imageio
