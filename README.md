@@ -14,7 +14,7 @@
 </h2>
 
 <p align="center">
-    This package allows you to download, correct, analyze and visualize <i>integrated</i> light curves from TESS FFI data using the methods outlined in <a href="https://ui.adsabs.harvard.edu">Wainer+2023</a>. While originally designed for analysis of star clusters, it can be used to create integrated light curves for any given aperture.
+    This package allows you to download, correct, analyze and visualize <i>integrated</i> light curves from TESS FFI data using the methods outlined in <a href="https://ui.adsabs.harvard.edu/abs/2023arXiv230709510W/abstract">Wainer+2023</a>. While originally designed for analysis of star clusters, it can be used to create integrated light curves for any given aperture.
 </p>
 
 ### Installation
