@@ -186,4 +186,4 @@ def linkcode_resolve(domain, info):
     # if you can't find it in the file then just link to the correct file
     except Exception:
         filename = info['module'].replace('.', '/') + '.py'
-    return "https://github.com/TomWagg/cosmic-gala/blob/main/{}".format(filename)
+    return "https://github.com/tobin-wainer/elk/blob/main/{}".format(filename)

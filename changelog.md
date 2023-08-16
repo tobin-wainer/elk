@@ -1,8 +1,12 @@
 # `elk` Changelog
 This log keeps track of the changes implemented in each version of `elk`.
 
+## 0.10 
+- Changing the required version of Numpy to <1.25 which was incompatible with the version of lightkurve we support. 
+- Change the X axis for Auto-Correlation Function to be sequential. 
+
 ## 0.9
-- Fixing bug in the from_fits funtions, making new tutorial and minor updates to other tutorials
+- Fixing bug in the from_fits functions, making new tutorial and minor updates to other tutorials
 
 ## 0.8
 - Updating the summary table output to handle different length of columns in different clusters, and fix bug issues with 0.7
