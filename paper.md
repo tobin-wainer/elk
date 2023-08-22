@@ -60,6 +60,8 @@ While most studies in the literature seek to extract individual sources from ble
 
 The open source nature of this code allows users of all skill levels to generate precise light curves from aperture based sources, with minimal input. This gives users the ability to fully diagnose the light curves in one convenient location. 
 
+`elk` is jointly published in [@wainer_catalog_2023], and further scientific uses of the package are explored in this work. 
+
 # Acknowledgements
 
 We would like to recognize and thank Samantha-Lynn Martinez for designing the `elk` logo.
