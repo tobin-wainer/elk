@@ -1,13 +1,8 @@
+:html_theme.sidebar_secondary.remove: true
+
 **********************************
 Variability Statistics (``stats``)
 **********************************
 
-Introduction
-============
-
-TODO add intro about module
-
-API
-===
-
 .. automodapi:: elk.stats
+    :no-heading:

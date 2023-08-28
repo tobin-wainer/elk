@@ -1,13 +1,8 @@
+:html_theme.sidebar_secondary.remove: true
+
 *****************************
 Utility Functions (``utils``)
 *****************************
 
-Introduction
-============
-
-TODO add intro about module
-
-API
-===
-
 .. automodapi:: elk.utils
+    :no-heading:

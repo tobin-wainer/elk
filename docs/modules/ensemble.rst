@@ -1,14 +1,9 @@
+:html_theme.sidebar_secondary.remove: true
+
 ***********************************
 Ensemble Lightcurves (``ensemble``)
 ***********************************
 
-Introduction
-============
-
-TODO add intro about module
-
-API
-===
-
 .. automodapi:: elk.ensemble
     :no-inheritance-diagram:
+    :no-heading:
