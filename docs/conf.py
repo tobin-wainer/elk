@@ -67,7 +67,7 @@ intersphinx_mapping = {'python': ('https://docs.python.org/3', None),
                        'pandas': ('https://pandas.pydata.org/docs/', None),
                        'lightkurve': ('https://docs.lightkurve.org', None)}
 
-bibtex_bibfiles = ['tutorials/refs.bib']
+bibtex_bibfiles = ''#['tutorials/refs.bib']
 
 # fix numpydoc autosummary
 numpydoc_show_class_members = False
@@ -109,6 +109,7 @@ html_theme_options = {
         },
     ],
     "footer_start": ["copyright", "last-updated"],
+    "header_links_before_dropdown": 7,
 }
 
 html_last_updated_fmt = "%Y %b %d at %H:%M:%S UTC"
