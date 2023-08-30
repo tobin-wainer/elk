@@ -24,4 +24,4 @@ Put simply? `pip install astro-elk`! But we recommend creating a conda environme
 All documentation for `elk` can be found <a href="https://elk.readthedocs.io/en/latest/">here!</a>
 
 ### Logo design
-We'd also like to acknowledge the absolutely splendid work of <a href="https://www.samanthalynnmartinez.com">Samantha-Lynn Martinez</a> in designing the `elk` logo. You can find more of her portfolio <a href="https://www.samanthalynnmartinez.com/illustrationdesign">here</a> and we encourage you to reach out to her for any design needs you have!
+This work is based on work originally supported by the Heising Simons Foundation. We'd also like to acknowledge the absolutely splendid work of <a href="https://www.samanthalynnmartinez.com">Samantha-Lynn Martinez</a> in designing the `elk` logo. You can find more of her portfolio <a href="https://www.samanthalynnmartinez.com/illustrationdesign">here</a> and we encourage you to reach out to her for any design needs you have!
