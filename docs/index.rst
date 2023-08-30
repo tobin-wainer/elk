@@ -31,4 +31,4 @@ Use the links below to learn how to install ``elk``, explore different features 
    pages/cite
    pages/feedback
 
-We'd also like to acknowledge the absolutely splendid work of `Samantha-Lynn Martinez <https://www.samanthalynnmartinez.com/>`_ in designing the ``elk`` logo. You can find more of her portfolio `here <https://www.samanthalynnmartinez.com/illustrationdesign>`_ and we encourage you to reach out to her for any design needs you have!
+This work is based on work originally supported by the Heising Simons Foundation. We'd also like to acknowledge the absolutely splendid work of `Samantha-Lynn Martinez <https://www.samanthalynnmartinez.com/>`_ in designing the ``elk`` logo. You can find more of her portfolio `here <https://www.samanthalynnmartinez.com/illustrationdesign>`_ and we encourage you to reach out to her for any design needs you have!
