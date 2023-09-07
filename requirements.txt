@@ -10,6 +10,6 @@ pandas
 tqdm
 h5py
 lightkurve==2.4.0
-tables
+tables @ git+https://github.com/PyTables/PyTables
 statsmodels
 imageio

@@ -18,5 +18,5 @@ dependencies:
   - statsmodels
   - pip:
     - lightkurve
-    - tables
+    - tables @ git+https://github.com/PyTables/PyTables
     - imageio
