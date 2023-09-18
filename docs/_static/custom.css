@@ -59,6 +59,7 @@ dl blockquote {
 
 :root {
   --pst-color-primary: #6c7d65!important;
+  --pst-color-secondary: #097D28!important;
   --pst-font-family-base: 'Signika', sans-serif!important;
   --pst-font-family-base-system: 'Signika', sans-serif!important;
   --pst-font-family-heading: 'Signika', sans-serif!important;
