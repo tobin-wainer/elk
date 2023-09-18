@@ -61,7 +61,7 @@ Installation
 
             pip install .
 
-        and you should be all set! Now it's time to learn how about `Getting Started <getting_started>`__ with ``elk``.
+        and you should be all set! Now it's time to learn how about `Getting Started <getting_started.html>`__ with ``elk``.
 
         .. note::
             If you also want to work with Jupyter notebooks then you'll also need to install jupyter/ipython to this environment!
