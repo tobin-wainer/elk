@@ -11,6 +11,8 @@
     <a href="mailto:tobinw@uw.edu?cc=tomwagg@uw.edu">
         <img src="https://img.shields.io/badge/contact-authors-blueviolet.svg?style=flat" alt="Email the authors"/>
     </a>
+    <a href="https://zenodo.org/badge/latestdoi/506809131"><img src="https://zenodo.org/badge/506809131.svg" alt="DOI">
+    </a>
 </h2>
 
 <p align="center">
