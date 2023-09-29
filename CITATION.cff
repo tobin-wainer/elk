@@ -1,0 +1,19 @@
+cff-version: 1.1.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Wainer
+    given-names: Tobin
+    orcid: https://orcid.org/0000-0001-6320-2230
+  - family-names: Wagg
+    given-names: Tom
+    orcid: https://orcid.org/0000-0001-6147-5761
+  - family-names: Poovelil
+    name-particle: Jacob
+    given-names: Vijith
+    orcid: https://orcid.org/0000-0002-9831-3501
+  - family-names: Zasowski
+    given-names: Gail
+    orcid: https://orcid.org/0000-0001-6761-9359
+title: tobin-wainer/elk: v1.0
+version: v1.0
+date-released: 2023-09-29v
