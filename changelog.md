@@ -1,6 +1,10 @@
 # `elk` Changelog
 This log keeps track of the changes implemented in each version of `elk`.
 
+## 1.0
+- Fixing typos in doccumentation, and acceptence of the JOSS paper.
+- Creating compatability with M1 processors
+
 ## 0.10 
 - Changing the required version of Numpy to <1.25 which was incompatible with the version of lightkurve we support. 
 - Change the X axis for Auto-Correlation Function to be sequential. 
