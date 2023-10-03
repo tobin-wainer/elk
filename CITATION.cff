@@ -1,19 +1,46 @@
-cff-version: 1.1.0
-message: "If you use this software, please cite it as below."
+cff-version: "1.2.0"
 authors:
+- family-names: Wainer
+  given-names: Tobin M.
+  orcid: "https://orcid.org/0000-0001-6320-2230"
+- family-names: Wagg
+  given-names: Tom
+  orcid: "https://orcid.org/0000-0001-6147-5761"
+- family-names: Poovelil
+  given-names: Vijith Jacob
+  orcid: "https://orcid.org/0000-0002-9831-3501"
+- family-names: Zasowski
+  given-names: Gail
+  orcid: "https://orcid.org/0000-0001-6761-9359"
+doi: 10.5281/zenodo.8393595
+message: If you use this software, please cite our article in the
+  Journal of Open Source Software.
+preferred-citation:
+  authors:
   - family-names: Wainer
-    given-names: Tobin
-    orcid: https://orcid.org/0000-0001-6320-2230
+    given-names: Tobin M.
+    orcid: "https://orcid.org/0000-0001-6320-2230"
   - family-names: Wagg
     given-names: Tom
-    orcid: https://orcid.org/0000-0001-6147-5761
+    orcid: "https://orcid.org/0000-0001-6147-5761"
   - family-names: Poovelil
-    name-particle: Jacob
-    given-names: Vijith
-    orcid: https://orcid.org/0000-0002-9831-3501
+    given-names: Vijith Jacob
+    orcid: "https://orcid.org/0000-0002-9831-3501"
   - family-names: Zasowski
     given-names: Gail
-    orcid: https://orcid.org/0000-0001-6761-9359
-title: tobin-wainer/elk: v1.0
-version: v1.0
-date-released: 2023-09-29v
+    orcid: "https://orcid.org/0000-0001-6761-9359"
+  date-published: 2023-10-03
+  doi: 10.21105/joss.05605
+  issn: 2475-9066
+  issue: 90
+  journal: Journal of Open Source Software
+  publisher:
+    name: Open Journals
+  start: 5605
+  title: "ELK: A python package for correcting, analyzing, and
+    diagnosing TESS integrated light curves"
+  type: article
+  url: "https://joss.theoj.org/papers/10.21105/joss.05605"
+  volume: 8
+title: "ELK: A python package for correcting, analyzing, and diagnosing
+  TESS integrated light curves"
