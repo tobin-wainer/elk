@@ -13,6 +13,9 @@
     </a>
     <a href="https://zenodo.org/badge/latestdoi/506809131"><img src="https://zenodo.org/badge/506809131.svg" alt="DOI">
     </a>
+    <a style="border-width:0" href="https://doi.org/10.21105/joss.05605">
+          <img src="https://joss.theoj.org/papers/10.21105/joss.05605/status.svg" alt="DOI badge" >
+    </a>
 </h2>
 
 <p align="center">
