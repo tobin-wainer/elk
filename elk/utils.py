@@ -36,7 +36,7 @@ def flux_to_mag(flux):
     Parameters
     ----------
     flux : :class:`~numpy.ndarray` or `float`
-        flux in terms of ergs/s
+        flux in terms of e/s [for TESS]
 
     Returns
     -------
@@ -55,9 +55,9 @@ def flux_err_to_mag_err(flux, flux_err):
     Parameters
     ----------
     flux : class: `~numpy.ndarray` or `float`
-        flux in terms of ergs/s
+        flux in terms of e/s [for TESS]
     flux_err : class: `~numpy.ndarray` or `float`
-       flux error in terms of ergs/s
+       flux error in terms of e/s [for TESS]
 
     Returns
     -------
