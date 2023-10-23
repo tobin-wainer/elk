@@ -2,7 +2,7 @@
 Citing elk
 **********
 
-If you use ``elk`` in a scientific publication, we ask for you to please cite. ``elk`` is jointly published in `AJ <https://ui.adsabs.harvard.edu/abs/2023AJ....166..106W/abstract>`_ and JOSS (update link when accepted). **We ask you to please cite both papers.**
+If you use ``elk`` in a scientific publication, we ask for you to please cite. ``elk`` is jointly published in `AJ <https://ui.adsabs.harvard.edu/abs/2023AJ....166..106W/abstract>`_ and `JOSS <https://ui.adsabs.harvard.edu/abs/2023JOSS....8.5605W/abstract>`_. **We ask you to please cite both papers.**
 
 Below are ready to use BibTex citations for each paper. We recommend you cite the AJ paper in the main text of the paper, and the JOSS paper in the software section.
 
@@ -24,4 +24,21 @@ Below are ready to use BibTex citations for each paper. We recommend you cite th
        adsnote = {Provided by the SAO/NASA Astrophysics Data System}
     }
 
-ADD ONCE JOSS paper is accepted.
+.. code-block:: bash
+
+    @ARTICLE{Wainer_JOSS,
+          author = {{Wainer}, Tobin M. and {Wagg}, Tom and {Poovelil}, Vijith Jacob and {Zasowski}, Gail},
+            title = "{ELK: A python package for correcting, analyzing, and diagnosing TESS integrated light curves}",
+          journal = {The Journal of Open Source Software},
+        keywords = {astronomy, variability, blending, star clusters, Python, Jupyter Notebook},
+            year = 2023,
+            month = oct,
+          volume = {8},
+          number = {90},
+              eid = {5605},
+            pages = {5605},
+              doi = {10.21105/joss.05605},
+          adsurl = {https://ui.adsabs.harvard.edu/abs/2023JOSS....8.5605W},
+          adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+    }
+
