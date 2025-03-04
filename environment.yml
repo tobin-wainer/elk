@@ -4,7 +4,7 @@ channels:
   - conda-forge
 dependencies:
   - python
-  - numpy
+  - numpy < 1.24
   - pip
   - matplotlib
   - astropy
@@ -17,6 +17,6 @@ dependencies:
   - h5py
   - statsmodels
   - pip:
-    - lightkurve
+    - lightkurve==2.4.0
     - tables @ git+https://github.com/PyTables/PyTables
     - imageio
